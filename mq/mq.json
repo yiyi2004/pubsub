@@ -1,0 +1,4 @@
+{
+    "nats-server":"https://github.com/nats-io/nats-server",
+    "nats-client":"https://github.com/nats-io/nats.go"
+}
