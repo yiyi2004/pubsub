@@ -16,10 +16,6 @@ type Topic interface {
 	NumSubcribers(topic string) int
 }
 
-// Metrics , emmm I don't konw how to explain the Metrics interface
-type Metrics interface {
-}
-
 // ConnManager is an interaface to manage connection, one connection is related to a topic
 type ConnManager interface {
 	Reconnect(topic string) error
@@ -30,13 +26,25 @@ type ConnManager interface {
 
 // Status -
 type Status interface {
-	// Connection statics
+	ConnStatus() *ConnStatus
 
-	// Channel statics
+	// Channel Status
 
-	// Server statics
+	// Server Status
 
-	// Publisher statics
+	// Publisher Status
 
-	// Subscription statics
+	// Subscription Status
+}
+
+// ConnStatus -
+type ConnStatus struct {
+	DisConnected bool
+	Connected    bool
+	Closed       bool
+	Reconnecting bool
+	Connecting   bool
+
+	DrainingSubs bool
+	DrainingPubs bool
 }

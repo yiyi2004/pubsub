@@ -1,6 +1,8 @@
 package nats
 
-import "os"
+import (
+	"os"
+)
 
 // NATS
 var (
