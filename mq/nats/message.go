@@ -12,7 +12,7 @@ func (msg *Msg) Payload() []byte {
 	return msg.payload
 }
 
-// ReplyTopic -
-func (msg *Msg) ReplyTopic() string {
+// ReplyT -
+func (msg *Msg) ReplyT() string {
 	return msg.reply
 }

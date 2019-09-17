@@ -82,7 +82,14 @@ func (b *Broker) RegisterTopic(topic string) (interface{}, error) {
 		return conn, nil
 	}
 
-	return b.Opts.Connect()
+	conn, err := b.Opts.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	b.M[topic] = conn
+
+	return conn, nil
 }
 
 // Close will close all connections when input len(topics) == 0

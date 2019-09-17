@@ -6,11 +6,13 @@ import (
 	"sync"
 
 	pkg "github.com/DemonDCC/pubsub/packet"
+	"github.com/nats.go"
 )
 
 var (
 	errInvalidTopic        = errors.New("[error]: Invalid topic")
 	errInvalidChannel      = errors.New("[error]: Invalid channel")
+	errInvalidConnection   = errors.New("[error]: Invalid Connection")
 	errInvalidMultiPublish = errors.New("[error]: MultiPublish error")
 	errEmptyData           = errors.New("[error]: Empty Data")
 )
@@ -53,35 +55,24 @@ func (p *Publisher) Publish(b *Broker, topic string, data []byte) error {
 }
 
 func (p *Publisher) publish(b *Broker, topic string, data []byte) error {
-	p.rw.RLock()
-	if conn, ok := b.M[topic]; ok {
-		if err := conn.Publish(topic, data); err != nil {
-			p.MsgsNum++
-
-			p.rw.RUnlock()
-			return err
-		}
-	}
-	p.rw.RUnlock()
-
-	conn, err := b.Opts.Connect()
+	conn, err := b.RegisterTopic(topic)
 	if err != nil {
 		return err
 	}
 
-	p.rw.Lock()
-	b.M[topic] = conn
-	p.rw.Unlock()
+	if conn, ok := conn.(*nats.Conn); ok {
+		if err := conn.Publish(topic, data); err == nil {
+			if err := conn.Flush(); err != nil {
+				return err
+			}
 
-	if err := conn.Publish(topic, data); err == nil {
-		if err := conn.Flush(); err != nil {
-			return err
+			p.MsgsNum++
+
+			return nil
 		}
-
-		p.MsgsNum++
 	}
 
-	return err
+	return errInvalidConnection
 }
 
 // PublishMsg will be abondoned
@@ -94,30 +85,28 @@ func (p *Publisher) PublishMsg(b *Broker, pkg pkg.Packet) error {
 		return errEmptyData
 	}
 
-	p.rw.RLock()
-	if conn, ok := b.M[pkg.Topic()]; ok {
-		p.rw.RUnlock()
+	return p.publishMsg(b, pkg)
+}
 
-		return conn.Publish(pkg.Topic(), pkg.Payload())
-	}
-	p.rw.RUnlock()
-
-	conn, err := b.Opts.Connect()
+func (p *Publisher) publishMsg(b *Broker, pkg pkg.Packet) error {
+	conn, err := b.RegisterTopic(pkg.Topic())
 	if err != nil {
 		return err
 	}
 
-	p.rw.Lock()
-	b.M[pkg.Topic()] = conn
-	p.rw.Unlock()
+	if conn, ok := conn.(nats.Conn); ok {
+		if err := conn.Publish(pkg.Topic(), pkg.Payload()); err == nil {
+			if err := conn.Flush(); err != nil {
+				return err
+			}
 
-	if err := conn.Publish(pkg.Topic(), pkg.Payload()); err == nil {
-		if err := conn.Flush(); err != nil {
-			return err
+			p.MsgsNum++
+
+			return nil
 		}
 	}
 
-	return err
+	return errInvalidConnection
 }
 
 // MultiPublish -

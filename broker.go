@@ -10,8 +10,7 @@ type Broker interface {
 // Topic -
 type Topic interface {
 	Topics() []string
-	RegisterTopic(topic string) error
-	Topic(topic string) (conn interface{}, ok bool)
+	RegisterTopic(topic string) (conn interface{}, err error)
 	NumTopics() int
 	NumSubcribers(topic string) int
 }

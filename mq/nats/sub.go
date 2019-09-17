@@ -32,8 +32,8 @@ type MultiSubscriber struct {
 
 	NumSubs int
 
-	isQueue   bool
-	QueueName string // queue
+	// isQueue   bool
+	// QueueName string // queue
 
 	// Only when isQueue=true, Topic is set.
 	Topic string
@@ -57,37 +57,28 @@ func (s *Subscriber) ChanSubscribe(b *Broker, topic string, ch chan *nats.Msg) e
 	}
 
 	s.rw.RLock()
-	if conn, ok := b.M[topic]; ok {
-		s.rw.RUnlock()
+	conn, err := b.RegisterTopic(topic)
+	if err != nil {
+		return err
+	}
+	s.rw.RUnlock()
 
+	if conn, ok := conn.(*nats.Conn); ok {
 		sub, err := conn.ChanSubscribe(topic, ch)
 		if err != nil {
 			return err
 		}
 
 		s.Sub = sub
-		return nil
-	}
-	s.rw.RUnlock()
-
-	conn, err := b.Opts.Connect()
-	if err != nil {
-		return err
 	}
 
-	sub, err := conn.ChanSubscribe(topic, ch)
-	if err != nil {
-		return err
-	}
-
-	s.Sub = sub
-	return nil
+	return errInvalidConnection
 }
 
 // ChanSubscribe : if the value of parameter queue is "", it represents that
 // the MultiSubscriber is a set of Subscribers, otherwise the MultiSubscriber is
 // Queue of Subscribers
-func (ms *MultiSubscriber) ChanSubscribe(b *Broker, topic string, queue string, ch chan *nats.Msg) error {
+func (ms *MultiSubscriber) ChanSubscribe(b *Broker, topic string, ch chan *nats.Msg) error {
 	if topic == "" {
 		return errInvalidTopic
 	}
@@ -96,33 +87,7 @@ func (ms *MultiSubscriber) ChanSubscribe(b *Broker, topic string, queue string, 
 		return errInvalidChannel
 	}
 
-	if queue != "" {
-		// queue subscribe is cannot be implemented
-		ms.isQueue = true
-		ms.QueueName = queue
-		ms.Topic = topic
-
-	} else {
-		ms.isQueue = false
-
-		if s, ok := ms.Subscribers[topic]; ok {
-			return s.ChanSubscribe(b, topic, ch)
-		}
-
-		if opts, ok := ms.SubscriberOptionFuncs[topic]; ok {
-			sub := b.CreateSubscriber(opts...)
-			ms.Subscribers[topic] = sub
-
-			return sub.ChanSubscribe(b, topic, ch)
-		}
-
-		sub := b.CreateSubscriber(ms.DefaultOptionFuncs...)
-		ms.Subscribers[topic] = sub
-
-		return sub.ChanSubscribe(b, topic, ch)
-	}
-
-	return nil
+	return ms.chanSubscribe(b, topic, ch)
 }
 
 // MultiChanSubscribe -
@@ -151,16 +116,42 @@ func (ms *MultiSubscriber) MultiChanSubscribe(b *Broker, topics []string, chs []
 
 		if opts, ok := ms.SubscriberOptionFuncs[topic]; ok {
 			s := b.CreateSubscriber(opts...)
+
+			s.rw.Lock()
 			ms.Subscribers[topic] = s
+			s.rw.Unlock()
 
 			if err := s.ChanSubscribe(b, topic, chs[i]); err != nil {
-				return err
+				log.Printf("[error]: Subscribe %s failed", topic)
 			}
 		}
-
 	}
 
 	return nil
+}
+
+func (ms *MultiSubscriber) chanSubscribe(b *Broker, topic string, ch chan *nats.Msg) error {
+	if s, ok := ms.Subscribers[topic]; ok {
+		return s.ChanSubscribe(b, topic, ch)
+	}
+
+	if opts, ok := ms.SubscriberOptionFuncs[topic]; ok {
+		sub := b.CreateSubscriber(opts...)
+
+		sub.rw.Lock()
+		ms.Subscribers[topic] = sub
+		sub.rw.Unlock()
+
+		return sub.ChanSubscribe(b, topic, ch)
+	}
+
+	sub := b.CreateSubscriber(ms.DefaultOptionFuncs...)
+
+	sub.rw.Lock()
+	ms.Subscribers[topic] = sub
+	sub.rw.Unlock()
+
+	return sub.ChanSubscribe(b, topic, ch)
 }
 
 // Wait -
