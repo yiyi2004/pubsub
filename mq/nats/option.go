@@ -35,7 +35,8 @@ type PublisherOptionFunc func(opts *PublisherOptions) error
 // SubscriberOptionFunc -
 type SubscriberOptionFunc func(opts *SubscriberOptions) error
 
-func (bo *BrokerOptions) connect() (*nats.Conn, error) {
+// Connect -
+func (bo *BrokerOptions) Connect() (*nats.Conn, error) {
 	if bo.UseDefault {
 		log.Println("Default Broker Options")
 		return bo.DefOpts.Connect()
@@ -44,7 +45,8 @@ func (bo *BrokerOptions) connect() (*nats.Conn, error) {
 	return nats.Connect(NATSURL, bo.CustomedOptFunc...)
 }
 
-func (bo *BrokerOptions) registerOptions(opts ...nats.Option) {
+// RegisterOptions -
+func (bo *BrokerOptions) RegisterOptions(opts ...nats.Option) {
 	if len(opts) == 0 {
 		bo.UseDefault = true
 		*bo.DefOpts = nats.GetDefaultOptions()

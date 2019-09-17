@@ -28,7 +28,7 @@ func NewBroker(url string, opts ...nats.Option) *Broker {
 
 	b.URL = url
 
-	b.Opts.registerOptions(opts...)
+	b.Opts.RegisterOptions(opts...)
 
 	return b
 }
@@ -82,7 +82,7 @@ func (b *Broker) RegisterTopic(topic string) (interface{}, error) {
 		return conn, nil
 	}
 
-	return b.Opts.connect()
+	return b.Opts.Connect()
 }
 
 // Close will close all connections when input len(topics) == 0

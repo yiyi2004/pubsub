@@ -5,7 +5,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/nats.go"
+	pkg "github.com/DemonDCC/pubsub/packet"
 )
 
 var (
@@ -49,6 +49,10 @@ func (p *Publisher) Publish(b *Broker, topic string, data []byte) error {
 		return errEmptyData
 	}
 
+	return p.publish(b, topic, data)
+}
+
+func (p *Publisher) publish(b *Broker, topic string, data []byte) error {
 	p.rw.RLock()
 	if conn, ok := b.M[topic]; ok {
 		if err := conn.Publish(topic, data); err != nil {
@@ -60,7 +64,7 @@ func (p *Publisher) Publish(b *Broker, topic string, data []byte) error {
 	}
 	p.rw.RUnlock()
 
-	conn, err := b.Opts.connect()
+	conn, err := b.Opts.Connect()
 	if err != nil {
 		return err
 	}
@@ -80,34 +84,34 @@ func (p *Publisher) Publish(b *Broker, topic string, data []byte) error {
 	return err
 }
 
-// PublishMsg -
-func (p *Publisher) PublishMsg(b *Broker, msg *natsMsg) error {
-	if msg.Subject == "" {
+// PublishMsg will be abondoned
+func (p *Publisher) PublishMsg(b *Broker, pkg pkg.Packet) error {
+	if pkg.Topic() == "" {
 		return errInvalidTopic
 	}
 
-	if len(msg.Data) == 0 {
+	if len(pkg.Payload()) == 0 {
 		return errEmptyData
 	}
 
 	p.rw.RLock()
-	if conn, ok := b.M[msg.Subject]; ok {
+	if conn, ok := b.M[pkg.Topic()]; ok {
 		p.rw.RUnlock()
 
-		return conn.PublishMsg((*nats.Msg)(msg))
+		return conn.Publish(pkg.Topic(), pkg.Payload())
 	}
 	p.rw.RUnlock()
 
-	conn, err := b.Opts.connect()
+	conn, err := b.Opts.Connect()
 	if err != nil {
 		return err
 	}
 
 	p.rw.Lock()
-	b.M[msg.Subject] = conn
+	b.M[pkg.Topic()] = conn
 	p.rw.Unlock()
 
-	if err := conn.PublishMsg((*nats.Msg)(msg)); err == nil {
+	if err := conn.Publish(pkg.Topic(), pkg.Payload()); err == nil {
 		if err := conn.Flush(); err != nil {
 			return err
 		}

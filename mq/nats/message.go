@@ -1,23 +1,18 @@
 package nats
 
-import (
-	"github.com/nats.go"
-)
-
-// natsMsg -
-type natsMsg nats.Msg
-
-// Topic -
-func (msg *natsMsg) Topic() string {
-	return msg.Subject
+// Msg -
+type Msg struct {
+	topic   string
+	reply   string
+	payload []byte
 }
 
 // Payload -
-func (msg *natsMsg) Payload() []byte {
-	return msg.Data
+func (msg *Msg) Payload() []byte {
+	return msg.payload
 }
 
 // ReplyTopic -
-func (msg *natsMsg) ReplyTopic() string {
-	return msg.Reply
+func (msg *Msg) ReplyTopic() string {
+	return msg.reply
 }

@@ -70,7 +70,7 @@ func (s *Subscriber) ChanSubscribe(b *Broker, topic string, ch chan *nats.Msg) e
 	}
 	s.rw.RUnlock()
 
-	conn, err := b.Opts.connect()
+	conn, err := b.Opts.Connect()
 	if err != nil {
 		return err
 	}
