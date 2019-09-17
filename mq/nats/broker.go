@@ -10,6 +10,7 @@ import (
 
 // Broker -
 type Broker struct {
+	rw   sync.RWMutex
 	URL  string
 	Opts *BrokerOptions
 	M    map[string]*nats.Conn
@@ -18,7 +19,8 @@ type Broker struct {
 // NewBroker -
 func NewBroker(url string, opts ...nats.Option) *Broker {
 	b := &Broker{
-		M: make(map[string]*nats.Conn),
+		rw: sync.RWMutex{},
+		M:  make(map[string]*nats.Conn),
 	}
 
 	if url == "" {
@@ -87,7 +89,9 @@ func (b *Broker) RegisterTopic(topic string) (interface{}, error) {
 		return nil, err
 	}
 
+	b.rw.Lock()
 	b.M[topic] = conn
+	b.rw.Unlock()
 
 	return conn, nil
 }
@@ -105,7 +109,7 @@ func (b *Broker) Close(topics ...string) {
 		if conn, ok := b.M[topic]; ok {
 			conn.Close()
 		} else {
-			log.Printf("topic %s is not existed\n", topic)
+			log.Printf("[log]: topic %s is not existed\n", topic)
 		}
 	}
 }
