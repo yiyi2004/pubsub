@@ -4,7 +4,8 @@ package pubsub
 type Broker interface {
 	Topic
 
-	CreatePublisher(options ...Option)
+	CreatePublisher(opts ...PublisherOptionFunc) Publisher
+	CreateSubscrber(opts ...SubscriberOptionFunc) Subscriber
 }
 
 // Topic -
@@ -13,14 +14,8 @@ type Topic interface {
 	RegisterTopic(topic string) (conn interface{}, err error)
 	NumTopics() int
 	NumSubcribers(topic string) int
-}
 
-// ConnManager is an interaface to manage connection, one connection is related to a topic
-type ConnManager interface {
-	Reconnect(topic string) error
-
-	Shutdown(topic string) error
-	ShutdownAll() (int, error)
+	Close(topics ...string)
 }
 
 // Status -

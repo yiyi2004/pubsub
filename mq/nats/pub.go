@@ -5,6 +5,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/DemonDCC/pubsub"
 	pkg "github.com/DemonDCC/pubsub/packet"
 	"github.com/nats.go"
 )
@@ -20,19 +21,19 @@ var (
 // Publisher -
 type Publisher struct {
 	// rw represents a Read/Write Mutex
-	rw      sync.RWMutex
+	rw      *sync.RWMutex
 	Topic   string
 	MsgsNum int
-	Opts    *PublisherOptions
+	Opts    *pubsub.PublisherOptions
 }
 
 // MultiPublisher -
 type MultiPublisher struct {
 	rw sync.RWMutex
 
-	DefaultOptionFuncs []PublisherOptionFunc
+	DefaultOptionFuncs []pubsub.PublisherOptionFunc
 
-	PublishersOptionFuncs map[string][]PublisherOptionFunc
+	PublishersOptionFuncs map[string][]pubsub.PublisherOptionFunc
 	Publishers            map[string]*Publisher
 
 	// Max represents the maximum value of publisher

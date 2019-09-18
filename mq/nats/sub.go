@@ -5,6 +5,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/DemonDCC/pubsub"
 	"github.com/nats.go"
 )
 
@@ -18,16 +19,16 @@ type Subscriber struct {
 	Topic string
 	// Sub is a nats.Subscription which represensts interest in the given topic.
 	Sub  *nats.Subscription
-	Opts *SubscriberOptions
+	Opts *pubsub.SubscriberOptions
 }
 
 // MultiSubscriber is either a queue (with the same topic) or a set of Subscribers(with different topics)
 type MultiSubscriber struct {
 	wg *sync.WaitGroup
 
-	DefaultOptionFuncs []SubscriberOptionFunc
+	DefaultOptionFuncs []pubsub.SubscriberOptionFunc
 
-	SubscriberOptionFuncs map[string][]SubscriberOptionFunc
+	SubscriberOptionFuncs map[string][]pubsub.SubscriberOptionFunc
 	Subscribers           map[string]*Subscriber
 
 	NumSubs int

@@ -2,10 +2,18 @@ package pubsub
 
 import "context"
 
-// Options -
-type Options struct {
+// PublisherOptions -
+type PublisherOptions struct {
 	Ctx context.Context
 }
 
-// Option is a function to register the option for the broker, publisher and subscription
-type Option func(opts *Options) error
+// SubscriberOptions -
+type SubscriberOptions struct {
+	Ctx context.Context
+}
+
+// PublisherOptionFunc -
+type PublisherOptionFunc func(opts *PublisherOptions) error
+
+// SubscriberOptionFunc -
+type SubscriberOptionFunc func(opts *SubscriberOptions) error

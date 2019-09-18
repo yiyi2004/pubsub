@@ -5,12 +5,13 @@ import (
 	"log"
 	"sync"
 
+	"github.com/DemonDCC/pubsub"
 	"github.com/nats.go"
 )
 
 // Broker -
 type Broker struct {
-	rw   sync.RWMutex
+	rw   *sync.RWMutex
 	URL  string
 	Opts *BrokerOptions
 	M    map[string]*nats.Conn
@@ -19,7 +20,7 @@ type Broker struct {
 // NewBroker -
 func NewBroker(url string, opts ...nats.Option) *Broker {
 	b := &Broker{
-		rw: sync.RWMutex{},
+		rw: new(sync.RWMutex),
 		M:  make(map[string]*nats.Conn),
 	}
 
@@ -36,10 +37,10 @@ func NewBroker(url string, opts ...nats.Option) *Broker {
 }
 
 // CreatePublisher -
-func (b *Broker) CreatePublisher(opts ...PublisherOptionFunc) *Publisher {
+func (b *Broker) CreatePublisher(opts ...pubsub.PublisherOptionFunc) *Publisher {
 	p := &Publisher{
-		rw: sync.RWMutex{},
-		Opts: &PublisherOptions{
+		rw: new(sync.RWMutex),
+		Opts: &pubsub.PublisherOptions{
 			Ctx: context.Background(),
 		},
 	}
@@ -52,21 +53,21 @@ func (b *Broker) CreatePublisher(opts ...PublisherOptionFunc) *Publisher {
 }
 
 // CreateMultiPublisher -
-func (b *Broker) CreateMultiPublisher(opts ...PublisherOptionFunc) *MultiPublisher {
+func (b *Broker) CreateMultiPublisher(opts ...pubsub.PublisherOptionFunc) *MultiPublisher {
 	return &MultiPublisher{
-		rw:                    sync.RWMutex{},
+		rw:                    new(sync.RWMutex),
 		DefaultOptionFuncs:    opts,
-		PublishersOptionFuncs: make(map[string][]PublisherOptionFunc),
+		PublishersOptionFuncs: make(map[string][]pubsub.PublisherOptionFunc),
 		Publishers:            make(map[string]*Publisher),
 		Max:                   -1,
 	}
 }
 
 // CreateSubscriber -
-func (b *Broker) CreateSubscriber(opts ...SubscriberOptionFunc) *Subscriber {
+func (b *Broker) CreateSubscriber(opts ...pubsub.SubscriberOptionFunc) *Subscriber {
 	s := &Subscriber{
-		rw: sync.RWMutex{},
-		Opts: &SubscriberOptions{
+		rw: new(sync.RWMutex),
+		Opts: &pubsub.SubscriberOptions{
 			Ctx: context.Background(),
 		},
 	}

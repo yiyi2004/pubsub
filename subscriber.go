@@ -1,9 +1,8 @@
 package pubsub
 
-// Subscription -
-type Subscription interface {
-	Subscribe(topic string, handler Handler) error
-	SubscribeChan(topic string, channel chan Msg) error
+// Subscriber -
+type Subscriber interface {
+	SubscribeChan(b Broker, topic string, ch interface{}) error
 
 	Unsubscribe() (int, error)
 	AutoUnsubcribeAll(max int) error

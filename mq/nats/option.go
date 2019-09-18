@@ -16,24 +16,8 @@ type BrokerOptions struct {
 	Ctx        context.Context
 }
 
-// PublisherOptions -
-type PublisherOptions struct {
-	Ctx context.Context
-}
-
-// SubscriberOptions -
-type SubscriberOptions struct {
-	Ctx context.Context
-}
-
 // BrokerOptionFunc -
 type BrokerOptionFunc func(opts *BrokerOptions) error
-
-// PublisherOptionFunc -
-type PublisherOptionFunc func(opts *PublisherOptions) error
-
-// SubscriberOptionFunc -
-type SubscriberOptionFunc func(opts *SubscriberOptions) error
 
 // Connect -
 func (bo *BrokerOptions) Connect() (*nats.Conn, error) {
