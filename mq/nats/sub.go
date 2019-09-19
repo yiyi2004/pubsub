@@ -15,7 +15,7 @@ var (
 
 // Subscriber -
 type Subscriber struct {
-	rw    sync.RWMutex
+	rw    *sync.RWMutex
 	Topic string
 	// Sub is a nats.Subscription which represensts interest in the given topic.
 	Sub  *nats.Subscription

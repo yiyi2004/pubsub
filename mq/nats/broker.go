@@ -9,6 +9,8 @@ import (
 	"github.com/nats.go"
 )
 
+var _ pubsub.Broker = &Broker{}
+
 // Broker -
 type Broker struct {
 	rw   *sync.RWMutex
@@ -18,7 +20,9 @@ type Broker struct {
 }
 
 // NewBroker -
-func NewBroker(url string, opts ...nats.Option) *Broker {
+func NewBroker(opts ...nats.Option) *Broker {
+	url := NATSURL
+
 	b := &Broker{
 		rw: new(sync.RWMutex),
 		M:  make(map[string]*nats.Conn),

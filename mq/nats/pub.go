@@ -29,7 +29,7 @@ type Publisher struct {
 
 // MultiPublisher -
 type MultiPublisher struct {
-	rw sync.RWMutex
+	rw *sync.RWMutex
 
 	DefaultOptionFuncs []pubsub.PublisherOptionFunc
 

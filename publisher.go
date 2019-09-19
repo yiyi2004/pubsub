@@ -1,8 +1,6 @@
 package pubsub
 
 import (
-	"context"
-
 	pkg "github.com/DemonDCC/pubsub/packet"
 )
 
@@ -10,9 +8,6 @@ import (
 type Publisher interface {
 	Publish(b Broker, topic string, data []byte) error
 	PublishMsg(b Broker, packet pkg.Packet) error
-
-	PublishWithContext(ctx context.Context, b Broker, topic string, data []byte) error
-	PublishMsgWithContext(ctx context.Context, b Broker, packet pkg.Packet) error
 }
 
 // MultiPublisher -
