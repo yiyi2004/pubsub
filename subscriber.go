@@ -2,15 +2,13 @@ package pubsub
 
 // Subscriber -
 type Subscriber interface {
-	SubscribeChan(b Broker, topic string, ch interface{}) error
+	ChanSubscribe(b Broker, topic string, ch interface{}) error
 
 	Unsubscribe() (int, error)
-	AutoUnsubcribeAll(max int) error
-
-	Err() error
-
-	Close() error
+	AutoUnsubscribe(max int) error
 }
+
+// Then I want to us context.Context to manage goroutine
 
 // Handler -
 type Handler interface{}

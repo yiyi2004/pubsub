@@ -5,16 +5,15 @@ type Broker interface {
 	Topic
 
 	CreatePublisher(opts ...PublisherOptionFunc) Publisher
-	CreateSubscrber(opts ...SubscriberOptionFunc) Subscriber
+	CreateSubscriber(opts ...SubscriberOptionFunc) Subscriber
 }
 
 // Topic -
 type Topic interface {
 	Topics() []string
-	RegisterTopic(topic string) (conn interface{}, err error)
 	NumTopics() int
+	RegisterTopic(topic string) (conn interface{}, err error)
 	NumSubcribers(topic string) int
-
 	Close(topics ...string)
 }
 

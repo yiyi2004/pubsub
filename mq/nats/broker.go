@@ -41,7 +41,7 @@ func NewBroker(opts ...nats.Option) *Broker {
 }
 
 // CreatePublisher -
-func (b *Broker) CreatePublisher(opts ...pubsub.PublisherOptionFunc) *Publisher {
+func (b *Broker) CreatePublisher(opts ...pubsub.PublisherOptionFunc) pubsub.Publisher {
 	p := &Publisher{
 		rw: new(sync.RWMutex),
 		Opts: &pubsub.PublisherOptions{
@@ -56,19 +56,8 @@ func (b *Broker) CreatePublisher(opts ...pubsub.PublisherOptionFunc) *Publisher 
 	return p
 }
 
-// CreateMultiPublisher -
-func (b *Broker) CreateMultiPublisher(opts ...pubsub.PublisherOptionFunc) *MultiPublisher {
-	return &MultiPublisher{
-		rw:                    new(sync.RWMutex),
-		DefaultOptionFuncs:    opts,
-		PublishersOptionFuncs: make(map[string][]pubsub.PublisherOptionFunc),
-		Publishers:            make(map[string]*Publisher),
-		Max:                   -1,
-	}
-}
-
 // CreateSubscriber -
-func (b *Broker) CreateSubscriber(opts ...pubsub.SubscriberOptionFunc) *Subscriber {
+func (b *Broker) CreateSubscriber(opts ...pubsub.SubscriberOptionFunc) pubsub.Subscriber {
 	s := &Subscriber{
 		rw: new(sync.RWMutex),
 		Opts: &pubsub.SubscriberOptions{
@@ -83,9 +72,29 @@ func (b *Broker) CreateSubscriber(opts ...pubsub.SubscriberOptionFunc) *Subscrib
 	return s
 }
 
+// Topic manager
+
+// Topics -
+func (b *Broker) Topics() []string {
+	var res []string
+
+	for topic := range b.M {
+		res = append(res, topic)
+	}
+
+	return res
+}
+
+// NumTopics -
+func (b *Broker) NumTopics() int {
+	return len(b.Topics())
+}
+
 // RegisterTopic -
 func (b *Broker) RegisterTopic(topic string) (interface{}, error) {
+	b.rw.RLock()
 	if conn, ok := b.M[topic]; ok {
+		b.rw.RUnlock()
 		return conn, nil
 	}
 
@@ -99,6 +108,18 @@ func (b *Broker) RegisterTopic(topic string) (interface{}, error) {
 	b.rw.Unlock()
 
 	return conn, nil
+}
+
+// NumSubcribers -
+// If the NumSubscrubers is a negative number
+// it represents that connection isn't existed
+func (b *Broker) NumSubcribers(topic string) int {
+	if conn, ok := b.M[topic]; ok {
+		return conn.NumSubscriptions()
+	}
+
+	log.Printf("[error]: topic: %s has no corresponding connection\n", topic)
+	return -1
 }
 
 // Close will close all connections when input len(topics) == 0
@@ -118,3 +139,14 @@ func (b *Broker) Close(topics ...string) {
 		}
 	}
 }
+
+// // CreateMultiPublisher -
+// func (b *Broker) CreateMultiPublisher(opts ...pubsub.PublisherOptionFunc) pubsub.Publisher {
+// 	return &MultiPublisher{
+// 		rw:                    new(sync.RWMutex),
+// 		DefaultOptionFuncs:    opts,
+// 		PublishersOptionFuncs: make(map[string][]pubsub.PublisherOptionFunc),
+// 		Publishers:            make(map[string]*Publisher),
+// 		Max:                   -1,
+// 	}
+// }

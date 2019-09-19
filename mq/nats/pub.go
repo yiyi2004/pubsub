@@ -14,9 +14,14 @@ var (
 	errInvalidTopic        = errors.New("[error]: Invalid topic")
 	errInvalidChannel      = errors.New("[error]: Invalid channel")
 	errInvalidConnection   = errors.New("[error]: Invalid Connection")
+	errInvalidBroker       = errors.New("[error]: Invalid Broker")
+	errInvalidPublisher    = errors.New("[error]: Invalid Publisher")
+	errInvalidSubscriber   = errors.New("[error]: Invalid Subscriber")
 	errInvalidMultiPublish = errors.New("[error]: MultiPublish error")
 	errEmptyData           = errors.New("[error]: Empty Data")
 )
+
+var _ pubsub.Publisher = &Publisher{}
 
 // Publisher -
 type Publisher struct {
@@ -41,7 +46,12 @@ type MultiPublisher struct {
 }
 
 // Publish will publish raw data to topic
-func (p *Publisher) Publish(b *Broker, topic string, data []byte) error {
+func (p *Publisher) Publish(b pubsub.Broker, topic string, data []byte) error {
+	broker, ok := b.(*Broker)
+	if !ok {
+		return errInvalidBroker
+	}
+
 	if topic != "" {
 		p.Topic = topic
 	} else {
@@ -52,7 +62,7 @@ func (p *Publisher) Publish(b *Broker, topic string, data []byte) error {
 		return errEmptyData
 	}
 
-	return p.publish(b, topic, data)
+	return p.publish(broker, topic, data)
 }
 
 func (p *Publisher) publish(b *Broker, topic string, data []byte) error {
@@ -77,7 +87,12 @@ func (p *Publisher) publish(b *Broker, topic string, data []byte) error {
 }
 
 // PublishMsg will be abondoned
-func (p *Publisher) PublishMsg(b *Broker, pkg pkg.Packet) error {
+func (p *Publisher) PublishMsg(b pubsub.Broker, pkg pkg.Packet) error {
+	broker, ok := b.(*Broker)
+	if !ok {
+		return errInvalidBroker
+	}
+
 	if pkg.Topic() == "" {
 		return errInvalidTopic
 	}
@@ -86,7 +101,7 @@ func (p *Publisher) PublishMsg(b *Broker, pkg pkg.Packet) error {
 		return errEmptyData
 	}
 
-	return p.publishMsg(b, pkg)
+	return p.publishMsg(broker, pkg)
 }
 
 func (p *Publisher) publishMsg(b *Broker, pkg pkg.Packet) error {
@@ -111,7 +126,7 @@ func (p *Publisher) publishMsg(b *Broker, pkg pkg.Packet) error {
 }
 
 // MultiPublish -
-func (mp *MultiPublisher) MultiPublish(b *Broker, topics []string, data [][]byte) error {
+func (mp *MultiPublisher) MultiPublish(b pubsub.Broker, topics []string, data [][]byte) error {
 	if len(topics) != len(data) {
 		return errInvalidMultiPublish
 	}
@@ -129,9 +144,13 @@ func (mp *MultiPublisher) MultiPublish(b *Broker, topics []string, data [][]byte
 		} else {
 			if opts, ok := mp.PublishersOptionFuncs[topic]; ok {
 				p := b.CreatePublisher(opts...)
+				publisher, ok := p.(*Publisher)
+				if !ok {
+					return errInvalidPublisher
+				}
 
 				mp.rw.Lock()
-				mp.Publishers[topic] = p
+				mp.Publishers[topic] = publisher
 				mp.rw.Unlock()
 
 				go p.Publish(b, topic, data[i])
