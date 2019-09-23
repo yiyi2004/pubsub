@@ -34,10 +34,8 @@ func (bo *BrokerOptions) RegisterOptions(opts ...nats.Option) {
 	if len(opts) == 0 {
 		bo.UseDefault = true
 		*bo.DefOpts = nats.GetDefaultOptions()
-		bo.Ctx = context.Background()
 	} else {
 		bo.UseDefault = false
 		bo.CustomedOptFunc = opts
-		bo.Ctx = context.Background()
 	}
 }

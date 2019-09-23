@@ -26,6 +26,10 @@ func NewBroker(opts ...nats.Option) *Broker {
 	b := &Broker{
 		rw: new(sync.RWMutex),
 		M:  make(map[string]*nats.Conn),
+		Opts: &BrokerOptions{
+			Ctx:     context.Background(),
+			DefOpts: new(nats.Options),
+		},
 	}
 
 	if url == "" {
