@@ -12,8 +12,8 @@ type Subscriber interface {
 
 // Then I want to us context.Context to manage goroutine
 
-// Handler -
-type Handler func(msg pkg.Packet)
+// HandleFunc -
+type HandleFunc func(msg pkg.Packet)
 
 // HandlerChain -
-type HandlerChain []Handler
+type HandlerChain []HandleFunc
