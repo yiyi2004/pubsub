@@ -1,5 +1,7 @@
 package pubsub
 
+import pkg "github.com/DemonDCC/pubsub/packet"
+
 // Subscriber -
 type Subscriber interface {
 	ChanSubscribe(b Broker, topic string, ch interface{}) error
@@ -11,4 +13,7 @@ type Subscriber interface {
 // Then I want to us context.Context to manage goroutine
 
 // Handler -
-type Handler interface{}
+type Handler func(msg pkg.Packet)
+
+// HandlerChain -
+type HandlerChain []Handler

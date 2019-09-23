@@ -7,5 +7,6 @@ type Packet interface {
 	Topic() string
 	Payload() []byte
 
+	EncType() string
 	Encode(encType string) []byte
 }
