@@ -2,6 +2,7 @@ package nats
 
 import (
 	"errors"
+	"log"
 	"sync"
 
 	"github.com/DemonDCC/pubsub"
@@ -25,6 +26,7 @@ type Subscriber struct {
 
 // ChanSubscribe -
 func (s *Subscriber) ChanSubscribe(b pubsub.Broker, topic string, ch interface{}) error {
+	log.Printf("[sub]: subscribe topic: %s\n", topic)
 	broker, ok := b.(*Broker)
 	if !ok {
 		return errInvalidSubscriber

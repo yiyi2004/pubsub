@@ -47,6 +47,7 @@ type MultiPublisher struct {
 
 // Publish will publish raw data to topic
 func (p *Publisher) Publish(b pubsub.Broker, topic string, data []byte) error {
+	log.Printf("[pub]: publish message to topic: %s\n", topic)
 	broker, ok := b.(*Broker)
 	if !ok {
 		return errInvalidBroker
