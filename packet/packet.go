@@ -1,5 +1,7 @@
 package packet
 
+import "github.com/DemonDCC/pubsub/codec"
+
 // Packet is a packet in pubsub system
 type Packet interface {
 	// Type is MQ's type; such as nats, kafka, rabbitMQ and so on
@@ -8,8 +10,8 @@ type Packet interface {
 	Topic() string
 	Payload() []byte
 	// if func: Reply is not used, Reply will return empty string
-	Reply() string
+	ReplyTopic() string
 	// EncType includes JSON. to be continued
-	EncType() string
-	Encode(encType string) []byte
+	codec.Encoder
+	codec.Decoder
 }

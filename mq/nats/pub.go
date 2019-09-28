@@ -5,7 +5,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/DemonDCC/pubsub"
+	pubsub "github.com/DemonDCC/pubsub/interface"
 	pkg "github.com/DemonDCC/pubsub/packet"
 	"github.com/nats.go"
 )

@@ -6,8 +6,12 @@ import (
 
 // Encoder -
 type Encoder interface {
-	Encode(v interface{}) ([]byte, error)
-	Decode(data []byte, v interface{}) error
+	Encode() ([]byte, error)
+}
+
+// Decoder -
+type Decoder interface {
+	Decode(v interface{}) error
 }
 
 // Encode -
