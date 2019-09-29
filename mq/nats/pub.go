@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	pubsub "github.com/DemonDCC/pubsub/interface"
-	pkg "github.com/DemonDCC/pubsub/packet"
 	"github.com/nats.go"
 )
 
@@ -88,7 +87,7 @@ func (p *Publisher) publish(b *Broker, topic string, data []byte) error {
 }
 
 // PublishMsg will be abondoned
-func (p *Publisher) PublishMsg(b pubsub.Broker, pkg pkg.Packet) error {
+func (p *Publisher) PublishMsg(b pubsub.Broker, pkg pubsub.Packet) error {
 	broker, ok := b.(*Broker)
 	if !ok {
 		return errInvalidBroker
@@ -105,7 +104,7 @@ func (p *Publisher) PublishMsg(b pubsub.Broker, pkg pkg.Packet) error {
 	return p.publishMsg(broker, pkg)
 }
 
-func (p *Publisher) publishMsg(b *Broker, pkg pkg.Packet) error {
+func (p *Publisher) publishMsg(b *Broker, pkg pubsub.Packet) error {
 	conn, err := b.RegisterTopic(pkg.Topic())
 	if err != nil {
 		return err

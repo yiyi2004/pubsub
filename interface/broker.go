@@ -1,5 +1,7 @@
 package pubsub
 
+import "github.com/DemonDCC/pubsub/router"
+
 // Broker -
 type Broker interface {
 	Topic
@@ -15,11 +17,13 @@ type Topic interface {
 	RegisterTopic(topic string) (conn interface{}, err error)
 	NumSubcribers(topic string) int
 	Close(topics ...string)
+
+	Subscribe(topic string, handler router.Handler) (Subscriber, error)
 }
 
-// Status -
-type Status interface {
-	ConnStatus() *ConnStatus
+// StatusInfo -
+type StatusInfo interface {
+	ConnStatus() ConnStatus
 
 	// Channel Status
 
@@ -30,14 +34,17 @@ type Status interface {
 	// Subscription Status
 }
 
-// ConnStatus -
-type ConnStatus struct {
-	DisConnected bool
-	Connected    bool
-	Closed       bool
-	Reconnecting bool
-	Connecting   bool
+// ConnStatus type
+type ConnStatus int8
 
-	DrainingSubs bool
-	DrainingPubs bool
-}
+// Status -
+const (
+	DisConnected = ConnStatus(iota)
+	Connected
+	Closed
+	Reconnecting
+	Connecting
+
+	DrainingSubs
+	DrainingPubs
+)

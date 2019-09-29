@@ -1,4 +1,4 @@
-package packet
+package pubsub
 
 import "github.com/DemonDCC/pubsub/codec"
 
