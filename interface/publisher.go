@@ -6,7 +6,7 @@ type Publisher interface {
 	PublishMsg(b Broker, packet Packet) error
 }
 
-// MultiPublisher -
-type MultiPublisher interface {
-	Publisher
-}
+// // MultiPublisher -
+// type MultiPublisher interface {
+// 	Publisher
+// }

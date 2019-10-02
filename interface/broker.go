@@ -1,10 +1,11 @@
 package pubsub
 
-import "github.com/DemonDCC/pubsub/router"
+import "github.com/zhangce1999/pubsub/interface/router"
 
 // Broker -
 type Broker interface {
 	Topic
+	// Router
 
 	CreatePublisher(opts ...PublisherOptionFunc) Publisher
 	CreateSubscriber(opts ...SubscriberOptionFunc) Subscriber
@@ -18,7 +19,8 @@ type Topic interface {
 	NumSubcribers(topic string) int
 	Close(topics ...string)
 
-	Subscribe(topic string, handler router.Handler) (Subscriber, error)
+	AsyncSubscribe(topic string, handler Handler) (Subscriber, error)
+	Subscribe(topic string, handler Handler) (Subscriber, error)
 }
 
 // StatusInfo -
@@ -48,3 +50,30 @@ const (
 	DrainingSubs
 	DrainingPubs
 )
+
+// HandlerFunc -
+type HandlerFunc func(msg Packet)
+
+// HandlersChain -
+type HandlersChain []HandlerFunc
+
+// Handle -
+func (h HandlerFunc) Handle(packet Packet) {
+	h(packet)
+}
+
+// Handler -s
+type Handler interface {
+	Handle(packet Packet)
+}
+
+// Router -
+type Router interface {
+	IRoutes
+	Group(string, ...HandlerFunc) *router.RouterGroup
+}
+
+// IRoutes -
+type IRoutes interface {
+	Use(middlewares ...HandlerFunc) IRoutes
+}

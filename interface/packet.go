@@ -1,6 +1,6 @@
 package pubsub
 
-import "github.com/DemonDCC/pubsub/codec"
+import "github.com/zhangce1999/pubsub/codec"
 
 // Packet is a packet in pubsub system
 type Packet interface {

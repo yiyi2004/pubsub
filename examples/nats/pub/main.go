@@ -1,7 +1,7 @@
 package main
 
 import (
-	pubsub "github.com/DemonDCC/pubsub/mq/nats"
+	pubsub "github.com/zhangce1999/pubsub/mq/nats"
 )
 
 func main() {
@@ -9,7 +9,7 @@ func main() {
 
 	p := b.CreatePublisher()
 
-	p.Publish(b, "hello", []byte("I and demon"))
+	p.Publish(b, "hello", []byte("I am demon"))
 
 	b.Close()
 }

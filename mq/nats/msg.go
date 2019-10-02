@@ -3,8 +3,8 @@ package nats
 import (
 	"encoding/json"
 
-	pubsub "github.com/DemonDCC/pubsub/interface"
 	"github.com/nats.go"
+	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
 var _ pubsub.Packet = &Msg{}

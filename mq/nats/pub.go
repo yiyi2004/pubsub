@@ -5,8 +5,8 @@ import (
 	"log"
 	"sync"
 
-	pubsub "github.com/DemonDCC/pubsub/interface"
 	"github.com/nats.go"
+	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
 var (
@@ -25,7 +25,7 @@ var _ pubsub.Publisher = &Publisher{}
 // Publisher -
 type Publisher struct {
 	// rw represents a Read/Write Mutex
-	rw      *sync.RWMutex
+	rw      *sync.Mutex
 	Topic   string
 	MsgsNum int
 	Opts    *pubsub.PublisherOptions
@@ -33,7 +33,7 @@ type Publisher struct {
 
 // MultiPublisher -
 type MultiPublisher struct {
-	rw *sync.RWMutex
+	rw *sync.Mutex
 
 	DefaultOptionFuncs []pubsub.PublisherOptionFunc
 

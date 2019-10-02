@@ -1,3 +1,0 @@
-github.com/DemonDCC/pubsub v0.0.0-20190917060621-f7cd61913330/go.mod h1:RnCKcaVO5GHgZzkROXH3fawa6m9irXHt96wxUbn9KGU=
-github.com/DemonDCC/pubsub/mq/nats v0.0.0-20190928070407-af67d8efa9f9 h1:3AYDPAR5DWNkzJiwZhAXPE0hi0iYWVyoUWPfTkPRX3I=
-github.com/DemonDCC/pubsub/mq/nats v0.0.0-20190928070407-af67d8efa9f9/go.mod h1:EGM8mu01SiRiY7dZJl+onUGWMCsDxzjhfFPGYEYKbHk=

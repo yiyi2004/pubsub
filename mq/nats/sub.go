@@ -5,8 +5,8 @@ import (
 	"log"
 	"sync"
 
-	pubsub "github.com/DemonDCC/pubsub/interface"
 	"github.com/nats.go"
+	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
 var (
@@ -17,11 +17,16 @@ var _ pubsub.Subscriber = &Subscriber{}
 
 // Subscriber -
 type Subscriber struct {
-	rw    *sync.RWMutex
-	Topic string
+	rw    *sync.Mutex
+	topic string
 	// Sub is a nats.Subscription which represensts interest in the given topic.
 	Sub  *nats.Subscription
 	Opts *pubsub.SubscriberOptions
+}
+
+// Topic -
+func (s *Subscriber) Topic() string {
+	return s.topic
 }
 
 // ChanSubscribe -
@@ -38,7 +43,7 @@ func (s *Subscriber) ChanSubscribe(b pubsub.Broker, topic string, ch interface{}
 	}
 
 	if topic != "" {
-		s.Topic = topic
+		s.topic = topic
 	} else {
 		return errInvalidTopic
 	}
@@ -47,12 +52,12 @@ func (s *Subscriber) ChanSubscribe(b pubsub.Broker, topic string, ch interface{}
 		return errInvalidChannel
 	}
 
-	s.rw.RLock()
+	s.rw.Lock()
 	conn, err := broker.RegisterTopic(topic)
 	if err != nil {
 		return err
 	}
-	s.rw.RUnlock()
+	s.rw.Unlock()
 
 	if conn, ok := conn.(*nats.Conn); ok {
 		sub, err := conn.ChanSubscribe(topic, channel)

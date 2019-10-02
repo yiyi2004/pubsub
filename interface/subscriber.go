@@ -10,7 +10,9 @@ type Subscriber interface {
 
 // Then I want to us context.Context to manage goroutine
 
-// Subscription -
-type Subscription interface {
-	Subscriber
-}
+// // Subscription -
+// type Subscription interface {
+// 	Subscriber
+
+// 	Topics() []string
+// }
