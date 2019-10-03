@@ -1,11 +1,11 @@
 package pubsub
 
-import "github.com/zhangce1999/pubsub/interface/router"
+import "github.com/zhangce1999/pubsub/router"
 
 // Broker -
 type Broker interface {
 	Topic
-	// Router
+	Router
 
 	CreatePublisher(opts ...PublisherOptionFunc) Publisher
 	CreateSubscriber(opts ...SubscriberOptionFunc) Subscriber
@@ -70,7 +70,7 @@ type Handler interface {
 // Router -
 type Router interface {
 	IRoutes
-	Group(string, ...HandlerFunc) *router.RouterGroup
+	Group(string, ...HandlerFunc) *router.Group
 }
 
 // IRoutes -

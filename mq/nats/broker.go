@@ -6,8 +6,9 @@ import (
 	"log"
 	"sync"
 
-	nats "github.com/nats.go"
+	"github.com/nats-io/nats.go"
 	pubsub "github.com/zhangce1999/pubsub/interface"
+	"github.com/zhangce1999/pubsub/router"
 )
 
 var _ pubsub.Broker = &Broker{}
@@ -18,6 +19,9 @@ type Broker struct {
 	URL  string
 	Opts *BrokerOptions
 	M    map[string]*nats.Conn
+
+	sch   chan *nats.Msg // sch represents sync channel
+	group *router.Group
 }
 
 // NewBroker -
@@ -31,6 +35,7 @@ func NewBroker(opts ...nats.Option) *Broker {
 			Ctx:     context.Background(),
 			DefOpts: new(nats.Options),
 		},
+		sch: make(chan *nats.Msg),
 	}
 
 	if url == "" {
@@ -155,7 +160,18 @@ func (b *Broker) AsyncSubscribe(topic string, handler pubsub.Handler) (pubsub.Su
 		handler = pubsub.HandlerFunc(defaultHandler)
 	}
 
-	return nil, nil
+	if _, ok := b.M[topic]; !ok {
+		if _, err := b.RegisterTopic(topic); err != nil {
+			return nil, err
+		}
+	}
+
+	s, err := b.asyncSubscribe(topic)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
 
 // Subscribe -
@@ -171,6 +187,25 @@ func AsyncSubscribe(topic string, handler pubsub.Handler) (pubsub.Subscriber, er
 // Subscribe -
 func Subscribe(topic string, handler pubsub.Handler) (pubsub.Subscriber, error) {
 	return nil, nil
+}
+
+func (b *Broker) asyncSubscribe(topic string) (*Subscriber, error) {
+	if b.sch == nil {
+		b.sch = make(chan *nats.Msg)
+	}
+
+	sub, err := b.M[topic].ChanSubscribe(topic, b.sch)
+	if err != nil {
+		return nil, err
+	}
+
+	s := &Subscriber{
+		rw:    new(sync.Mutex),
+		topic: topic,
+		Sub:   sub,
+	}
+
+	return s, nil
 }
 
 func defaultHandler(msg pubsub.Packet) {

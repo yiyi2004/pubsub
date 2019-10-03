@@ -5,7 +5,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/nats.go"
+	"github.com/nats-io/nats.go"
 	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 

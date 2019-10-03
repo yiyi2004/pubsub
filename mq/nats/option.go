@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/nats.go"
+	"github.com/nats-io/nats.go"
 )
 
 // BrokerOptions -

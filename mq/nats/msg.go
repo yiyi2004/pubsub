@@ -3,7 +3,7 @@ package nats
 import (
 	"encoding/json"
 
-	"github.com/nats.go"
+	"github.com/nats-io/nats.go"
 	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
