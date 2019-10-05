@@ -1,14 +1,11 @@
 package pubsub
 
-import "github.com/zhangce1999/pubsub/router"
-
 // Broker -
 type Broker interface {
 	Topic
-	Router
 
 	CreatePublisher(opts ...PublisherOptionFunc) Publisher
-	CreateSubscriber(opts ...SubscriberOptionFunc) Subscriber
+	CreateSubscription(opts ...SubscriptionOptionFunc) Subscription
 }
 
 // Topic -
@@ -19,8 +16,8 @@ type Topic interface {
 	NumSubcribers(topic string) int
 	Close(topics ...string)
 
-	AsyncSubscribe(topic string, handler Handler) (Subscriber, error)
-	Subscribe(topic string, handler Handler) (Subscriber, error)
+	AsyncSubscribe(topic string, handler Handler) (Subscription, error)
+	Subscribe(topic string, handler Handler) (Subscription, error)
 }
 
 // StatusInfo -
@@ -65,15 +62,4 @@ func (h HandlerFunc) Handle(packet Packet) {
 // Handler -s
 type Handler interface {
 	Handle(packet Packet)
-}
-
-// Router -
-type Router interface {
-	IRoutes
-	Group(string, ...HandlerFunc) *router.Group
-}
-
-// IRoutes -
-type IRoutes interface {
-	Use(middlewares ...HandlerFunc) IRoutes
 }

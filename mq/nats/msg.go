@@ -1,8 +1,6 @@
 package nats
 
 import (
-	"encoding/json"
-
 	"github.com/nats-io/nats.go"
 	pubsub "github.com/zhangce1999/pubsub/interface"
 )
@@ -11,7 +9,7 @@ var _ pubsub.Packet = &Msg{}
 
 // Msg -
 type Msg struct {
-	nats.Msg
+	*nats.Msg
 }
 
 // Type -
@@ -36,10 +34,10 @@ func (m *Msg) ReplyTopic() string {
 
 // Encode -
 func (m *Msg) Encode() ([]byte, error) {
-	return json.Marshal(m)
+	return nil, nil
 }
 
 // Decode -
 func (m *Msg) Decode(v interface{}) error {
-	return json.Unmarshal(m.Data, v)
+	return nil
 }

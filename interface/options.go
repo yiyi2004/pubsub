@@ -15,5 +15,5 @@ type SubscriberOptions struct {
 // PublisherOptionFunc -
 type PublisherOptionFunc func(opts *PublisherOptions) error
 
-// SubscriberOptionFunc -
-type SubscriberOptionFunc func(opts *SubscriberOptions) error
+// SubscriptionOptionFunc -
+type SubscriptionOptionFunc func(opts *SubscriberOptions) error

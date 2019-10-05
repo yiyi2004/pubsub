@@ -8,29 +8,37 @@ import (
 
 	"github.com/nats-io/nats.go"
 	pubsub "github.com/zhangce1999/pubsub/interface"
-	"github.com/zhangce1999/pubsub/router"
 )
 
 var _ pubsub.Broker = &Broker{}
 
 // Broker -
 type Broker struct {
-	rw   *sync.Mutex
 	URL  string
 	Opts *BrokerOptions
-	M    map[string]*nats.Conn
+	// the key of M is either a "/" or a Group Path
+	// Group Path: groupPath/relativePath
+	M map[string]routes
 
-	sch   chan *nats.Msg // sch represents sync channel
-	group *router.Group
+	group *Group
+	rw    *sync.Mutex
+	// sch represents a sync channel
+	sch chan *nats.Msg
 }
+
+type route struct {
+	relativePath string
+	conn         *nats.Conn
+	mainHandler  pubsub.HandlerFunc
+}
+
+type routes []*route
 
 // NewBroker -
 func NewBroker(opts ...nats.Option) *Broker {
-	url := NATSURL
-
 	b := &Broker{
 		rw: new(sync.Mutex),
-		M:  make(map[string]*nats.Conn),
+		M:  make(map[string]routes),
 		Opts: &BrokerOptions{
 			Ctx:     context.Background(),
 			DefOpts: new(nats.Options),
@@ -38,12 +46,17 @@ func NewBroker(opts ...nats.Option) *Broker {
 		sch: make(chan *nats.Msg),
 	}
 
-	if url == "" {
-		log.Printf("customed URL is nil, set the URL default URL\n")
-		b.URL = nats.DefaultURL
+	b.group = &Group{
+		root:     true,
+		basePath: "/",
+		broker:   b,
 	}
 
-	b.URL = url
+	if NATSURL == "" {
+		b.URL = nats.DefaultURL
+	} else {
+		b.URL = NATSURL
+	}
 
 	b.Opts.RegisterOptions(opts...)
 
@@ -67,8 +80,8 @@ func (b *Broker) CreatePublisher(opts ...pubsub.PublisherOptionFunc) pubsub.Publ
 }
 
 // CreateSubscriber -
-func (b *Broker) CreateSubscriber(opts ...pubsub.SubscriberOptionFunc) pubsub.Subscriber {
-	s := &Subscriber{
+func (b *Broker) CreateSubscriber(opts ...pubsub.SubscriberOptionFunc) pubsub.Subscription {
+	s := &Subscription{
 		rw: new(sync.Mutex),
 		Opts: &pubsub.SubscriberOptions{
 			Ctx: context.Background(),
@@ -157,7 +170,7 @@ func (b *Broker) AsyncSubscribe(topic string, handler pubsub.Handler) (pubsub.Su
 	}
 
 	if handler == nil {
-		handler = pubsub.HandlerFunc(defaultHandler)
+		handler = pubsub.HandlerFunc(deploy)
 	}
 
 	if _, ok := b.M[topic]; !ok {
@@ -208,7 +221,7 @@ func (b *Broker) asyncSubscribe(topic string) (*Subscriber, error) {
 	return s, nil
 }
 
-func defaultHandler(msg pubsub.Packet) {
+func deploy(msg pubsub.Packet) {
 	fmt.Printf("Topic: %s, Payload: %s\n", msg.Topic(), string(msg.Payload()))
 }
 

@@ -6,18 +6,19 @@ import (
 	"sync"
 
 	"github.com/nats-io/nats.go"
+	"github.com/zhangce1999/pubsub/codec"
 	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
 var (
-	errInvalidTopic        = errors.New("[error]: Invalid topic")
-	errInvalidChannel      = errors.New("[error]: Invalid channel")
-	errInvalidConnection   = errors.New("[error]: Invalid Connection")
-	errInvalidBroker       = errors.New("[error]: Invalid Broker")
-	errInvalidPublisher    = errors.New("[error]: Invalid Publisher")
-	errInvalidSubscriber   = errors.New("[error]: Invalid Subscriber")
-	errInvalidMultiPublish = errors.New("[error]: MultiPublish error")
-	errEmptyData           = errors.New("[error]: Empty Data")
+	errInvalidTopic        = errors.New("[error]: invalid topic")
+	errInvalidChannel      = errors.New("[error]: invalid channel")
+	errInvalidConnection   = errors.New("[error]: invalid connection")
+	errInvalidBroker       = errors.New("[error]: invalid broker")
+	errInvalidPublisher    = errors.New("[error]: invalid publisher")
+	errInvalidSubscriber   = errors.New("[error]: invalid subscriber")
+	errInvalidMultiPublish = errors.New("[error]: multiPublish error")
+	errEmptyData           = errors.New("[error]: empty data")
 )
 
 var _ pubsub.Publisher = &Publisher{}
@@ -62,17 +63,29 @@ func (p *Publisher) Publish(b pubsub.Broker, topic string, data []byte) error {
 		return errEmptyData
 	}
 
-	return p.publish(broker, topic, data)
+	return p.publish(broker, data)
 }
 
-func (p *Publisher) publish(b *Broker, topic string, data []byte) error {
-	conn, err := b.RegisterTopic(topic)
+func (p *Publisher) publish(b *Broker, data []byte) error {
+	conn, err := b.RegisterTopic(p.Topic)
 	if err != nil {
 		return err
 	}
 
+	if max, ok := p.Opts.Ctx.Value("MAX_MESSAGES").(int); ok {
+		if p.MsgsNum >= max && max > 0 {
+			log.Fatal(`[log]: the amount of messages that can be sent have
+						have reached the maximum`)
+		}
+	}
+
 	if conn, ok := conn.(*nats.Conn); ok {
-		if err := conn.Publish(topic, data); err == nil {
+		encData, err := encode(p.Topic, data)
+		if err != nil {
+			return err
+		}
+
+		if err := conn.Publish(p.Topic, encData); err == nil {
 			if err := conn.Flush(); err != nil {
 				return err
 			}
@@ -159,4 +172,12 @@ func (mp *MultiPublisher) MultiPublish(b pubsub.Broker, topics []string, data []
 	}
 
 	return nil
+}
+
+func encode(topic string, data []byte) (res []byte, err error) {
+	msg := Msg{}
+	msg.Subject = topic
+	msg.Data = data
+
+	return codec.GobEncode(&msg)
 }
