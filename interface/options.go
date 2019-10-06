@@ -17,3 +17,6 @@ type PublisherOptionFunc func(opts *PublisherOptions) error
 
 // SubscriptionOptionFunc -
 type SubscriptionOptionFunc func(opts *SubscriberOptions) error
+
+// Key represents the Ctx's key
+type Key string

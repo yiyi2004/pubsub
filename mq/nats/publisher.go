@@ -32,19 +32,6 @@ type Publisher struct {
 	Opts    *pubsub.PublisherOptions
 }
 
-// MultiPublisher -
-type MultiPublisher struct {
-	rw *sync.Mutex
-
-	DefaultOptionFuncs []pubsub.PublisherOptionFunc
-
-	PublishersOptionFuncs map[string][]pubsub.PublisherOptionFunc
-	Publishers            map[string]*Publisher
-
-	// Max represents the maximum value of publisher
-	Max int
-}
-
 // Publish will publish raw data to topic
 func (p *Publisher) Publish(b pubsub.Broker, topic string, data []byte) error {
 	log.Printf("[pub]: publish message to topic: %s\n", topic)
@@ -138,46 +125,10 @@ func (p *Publisher) publishMsg(b *Broker, pkg pubsub.Packet) error {
 	return errInvalidConnection
 }
 
-// MultiPublish -
-func (mp *MultiPublisher) MultiPublish(b pubsub.Broker, topics []string, data [][]byte) error {
-	if len(topics) != len(data) {
-		return errInvalidMultiPublish
-	}
-
-	for i := 0; i < len(topics); i++ {
-		if topics[i] == "" {
-			log.Println("invalid topic")
-			continue
-		}
-
-		topic := topics[i]
-
-		if p, ok := mp.Publishers[topic]; ok {
-			go p.Publish(b, topic, data[i])
-		} else {
-			if opts, ok := mp.PublishersOptionFuncs[topic]; ok {
-				p := b.CreatePublisher(opts...)
-				publisher, ok := p.(*Publisher)
-				if !ok {
-					return errInvalidPublisher
-				}
-
-				mp.rw.Lock()
-				mp.Publishers[topic] = publisher
-				mp.rw.Unlock()
-
-				go p.Publish(b, topic, data[i])
-			}
-		}
-	}
-
-	return nil
-}
-
 func encode(topic string, data []byte) (res []byte, err error) {
 	msg := Msg{}
-	msg.Subject = topic
-	msg.Data = data
+	msg.topic = topic
+	msg.data = data
 
 	return codec.GobEncode(&msg)
 }

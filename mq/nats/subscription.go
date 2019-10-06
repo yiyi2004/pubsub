@@ -1,8 +1,6 @@
 package nats
 
 import (
-	"errors"
-	"log"
 	"sync"
 	"time"
 
@@ -11,9 +9,10 @@ import (
 	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
-var (
-	errMultiSubscribe = errors.New("[error]: MultiSubscribe error")
-)
+// type Subscription interface {
+// 	pubsub.Subscription
+
+// }
 
 var _ pubsub.Subscription = &Subscription{}
 
@@ -23,239 +22,147 @@ type Subscription struct {
 	rw      *sync.Mutex
 	topic   string
 	broker  *Broker
+	subtype pubsub.SubscriptionType
 	// Sub is a nats.Subscription which represensts interest in the given topic.
-	Subs []*nats.Subscription
+	Subs map[string]*nats.Subscription
 	Opts *pubsub.SubscriberOptions
 }
 
-// Topic -
-func (s *Subscription) Topic() string {
-	return s.topic
+// Type -
+func (s *Subscription) Type() pubsub.SubscriptionType {
+	return s.subtype
 }
 
-// Drain -
-func (s *Subscription) Drain() error {
-	if s.isGroup {
-		return s.Subs[0].Drain()
-	}
+// Topics -
+func (s *Subscription) Topics() []string {
+	s.rw.Lock()
+	defer s.rw.Unlock()
+
+	var topics []string
 
 	if routes, ok := s.broker.M[s.topic]; ok {
-		for _, route := range routes {
-			go func() {
-				if err := route.conn.Drain(); err != nil {
-					log.Println(err)
-				}
-			}()
+		for relativePath := range routes {
+			topics = append(topics, joinPaths(s.topic, relativePath))
 		}
+		return topics
 	}
 
-	return
-}
-
-// Delivered -
-func (s *Subscription) Delivered() (int64, error) {
-	return s.Sub.Delivered()
+	topics = append(topics, s.topic)
+	return topics
 }
 
 // Unsubscribe -
-func (s *Subscription) Unsubscribe() (int, error) {
-	return 1, s.Sub.Unsubscribe()
-}
+func (s *Subscription) Unsubscribe(topics ...string) (num int, err error) {
+	s.rw.Lock()
+	defer s.rw.Unlock()
 
-// AutoUnsubscribe -
-func (s *Subscription) AutoUnsubscribe(max int) error {
-	return s.AutoUnsubscribe(max)
-}
+	if s.isGroup {
+		if len(topics) == 0 {
+			for relativePath, sub := range s.Subs {
+				num++
 
-// Pending -
-func (s *Subscription) Pending() (int, int, error) {
-	return s.Sub.Pending()
-}
+				sub.Unsubscribe()
+				s.broker.M[s.topic][relativePath].conn.Close()
 
-// MaxPending -
-func (s *Subscription) MaxPending() (int, int, error) {
-	return s.Sub.MaxPending()
-}
+				delete(s.Subs, relativePath)
+				delete(s.broker.M[s.topic], relativePath)
+			}
 
-// PendingLimits -
-func (s *Subscription) PendingLimits() (int, int, error) {
-	return s.Sub.PendingLimits()
-}
+			return num, nil
+		}
 
-// SetPendingLimits -
-func (s *Subscription) SetPendingLimits(msgLimit, bytesLimit int) error {
-	return s.Sub.SetPendingLimits(msgLimit, bytesLimit)
-}
+		for _, topic := range topics {
+			topic = insertBackSlash(topic)
+			for relativePath, sub := range s.Subs {
+				targetTopic := joinPaths(s.topic, relativePath)
+				if topic == targetTopic {
+					num++
 
-// NextMsg -
-func (s *Subscription) NextMsg(timeout time.Duration) (res pubsub.Packet, err error) {
-	msg, err := s.Sub.NextMsg(timeout)
-	if err != nil {
-		return nil, err
+					sub.Unsubscribe()
+					s.broker.M[s.topic][relativePath].conn.Close()
+
+					delete(s.Subs, relativePath)
+					delete(s.broker.M[s.topic], relativePath)
+				}
+			}
+		}
+
+		return num, nil
 	}
 
-	if err := codec.GobDecode(msg.Data, &res); err != nil {
-		return nil, err
+	if err = s.Subs[s.topic].Unsubscribe(); err != nil {
+		return
 	}
 
+	delete(s.Subs, s.topic)
+	delete(s.broker.M["/"], s.topic)
 	return
 }
 
-// // ChanSubscribe -
-// func (s *Subscription) ChanSubscribe(b pubsub.Broker, topic string, ch interface{}) error {
-// 	log.Printf("[sub]: subscribe topic: %s\n", topic)
-// 	broker, ok := b.(*Broker)
-// 	if !ok {
-// 		return errInvalidSubscriber
-// 	}
+// AutoUnsubscribe -
+func (s *Subscription) AutoUnsubscribe(max int, topic string) error {
+	s.rw.Lock()
+	defer s.rw.Unlock()
 
-// 	channel, ok := ch.(chan *nats.Msg)
-// 	if !ok {
-// 		return errInvalidChannel
-// 	}
+	topic = insertBackSlash(topic)
+	if s.isGroup {
+		if s.topic == topic {
+			for _, sub := range s.Subs {
+				sub.AutoUnsubscribe(max)
+			}
 
-// 	if topic != "" {
-// 		s.topic = topic
-// 	} else {
-// 		return errInvalidTopic
-// 	}
+			s.Subs = make(map[string]*nats.Subscription)
+		}
 
-// 	if ch == nil {
-// 		return errInvalidChannel
-// 	}
+		for relativePath, sub := range s.Subs {
+			targetTopic := joinPaths(s.topic, relativePath)
+			if topic == targetTopic {
+				return sub.AutoUnsubscribe(max)
+			}
+		}
+	}
 
-// 	s.rw.Lock()
-// 	conn, err := broker.RegisterTopic(topic)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	s.rw.Unlock()
+	return s.Subs[s.topic].AutoUnsubscribe(max)
+}
 
-// 	if conn, ok := conn.(*nats.Conn); ok {
-// 		sub, err := conn.ChanSubscribe(topic, channel)
-// 		if err != nil {
-// 			return err
-// 		}
+// NextMsg -
+func (s *Subscription) NextMsg(timeout time.Duration, topic string) (pubsub.Packet, error) {
+	s.rw.Lock()
+	defer s.rw.Unlock()
 
-// 		s.Sub = sub
-// 	}
+	if !s.isGroup {
+		msg, err := s.Subs[s.topic].NextMsg(timeout)
+		if err != nil {
+			return nil, err
+		}
 
-// 	return errInvalidConnection
-// }
+		var res Msg
 
-// // Unsubscribe -
-// func (s *Subscription) Unsubscribe() (int, error) {
-// 	return 1, s.Sub.Unsubscribe()
-// }
+		if err := codec.GobDecode(msg.Data, &res); err != nil {
+			return nil, err
+		}
 
-// // AutoUnsubscribe -
-// func (s *Subscription) AutoUnsubscribe(max int) error {
-// 	return s.Sub.AutoUnsubscribe(max)
-// }
+		return &res, nil
+	}
 
-// // MultiSubscriber is either a queue (with the same topic) or a set of Subscribers(with different topics)
-// type MultiSubscriber struct {
-// 	wg *sync.WaitGroup
+	topic = insertBackSlash(topic)
+	for relativePath, sub := range s.Subs {
+		targetTopic := joinPaths(s.topic, relativePath)
+		if topic == targetTopic {
+			msg, err := sub.NextMsg(timeout)
+			if err != nil {
+				return nil, err
+			}
 
-// 	DefaultOptionFuncs []pubsub.SubscriberOptionFunc
+			var res Msg
 
-// 	SubscriberOptionFuncs map[string][]pubsub.SubscriberOptionFunc
-// 	Subscribers           map[string]*Subscription
+			if err := codec.GobDecode(msg.Data, &res); err != nil {
+				return nil, err
+			}
 
-// 	NumSubs int
+			return &res, nil
+		}
+	}
 
-// 	// isQueue   bool
-// 	// QueueName string // queue
-
-// 	// Only when isQueue=true, Topic is set.
-// 	Topic string
-
-// 	// Max represents the maximum number of Subscribers
-// 	// if Max is a negative number, it represents that
-// 	// the number of Subscribers is unlimited.
-// 	Max int
-// }
-
-// // ChanSubscribe : if the value of parameter queue is "", it represents that
-// // the MultiSubscriber is a set of Subscribers, otherwise the MultiSubscriber is
-// // Queue of Subscribers
-// func (ms *MultiSubscriber) ChanSubscribe(b *Broker, topic string, ch chan *nats.Msg) error {
-// 	if topic == "" {
-// 		return errInvalidTopic
-// 	}
-
-// 	if ch == nil {
-// 		return errInvalidChannel
-// 	}
-
-// 	return ms.chanSubscribe(b, topic, ch)
-// }
-
-// // MultiChanSubscribe -
-// func (ms *MultiSubscriber) MultiChanSubscribe(b *Broker, topics []string, chs []chan *nats.Msg) error {
-// 	if len(topics) != len(chs) {
-// 		return errMultiSubscribe
-// 	}
-
-// 	for i, topic := range topics {
-// 		if topic == "" {
-// 			log.Printf("[log]: topics[%d] is empty string\n", i)
-// 			continue
-// 		}
-
-// 		if chs[i] == nil {
-// 			log.Printf("[log]: channel[%d] is nil", i)
-// 			continue
-// 		}
-
-// 		if s, ok := ms.Subscribers[topic]; ok {
-// 			if s.Sub.IsValid() {
-// 				log.Printf("[log]: topic %s has been subscribe", topic)
-// 				continue
-// 			}
-// 		}
-
-// 		if opts, ok := ms.SubscriberOptionFuncs[topic]; ok {
-// 			s := b.CreateSubscriber(opts...)
-
-// 			s.rw.Lock()
-// 			ms.Subscribers[topic] = s
-// 			s.rw.Unlock()
-
-// 			if err := s.ChanSubscribe(b, topic, chs[i]); err != nil {
-// 				log.Printf("[error]: Subscribe %s failed", topic)
-// 			}
-// 		}
-// 	}
-
-// 	return nil
-// }
-
-// func (ms *MultiSubscriber) chanSubscribe(b pubsub.Broker, topic string, ch chan *nats.Msg) error {
-// 	if s, ok := ms.Subscribers[topic]; ok {
-// 		return s.ChanSubscribe(b, topic, ch)
-// 	}
-
-// 	if opts, ok := ms.SubscriberOptionFuncs[topic]; ok {
-// 		sub := b.CreateSubscriber(opts...)
-
-// 		sub.rw.Lock()
-// 		ms.Subscribers[topic] = sub
-// 		sub.rw.Unlock()
-
-// 		return sub.ChanSubscribe(b, topic, ch)
-// 	}
-
-// 	sub := b.CreateSubscriber(ms.DefaultOptionFuncs...)
-
-// 	sub.rw.Lock()
-// 	ms.Subscribers[topic] = sub
-// 	sub.rw.Unlock()
-
-// 	return sub.ChanSubscribe(b, topic, ch)
-// }
-
-// // Wait -
-// func (ms *MultiSubscriber) Wait() {
-// 	ms.wg.Wait()
-// }
+	return nil, errInvalidTopic
+}

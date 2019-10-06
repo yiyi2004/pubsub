@@ -2,29 +2,23 @@ package pubsub
 
 import "time"
 
+// SubscriptionType -
+type SubscriptionType int
+
+// SubscriptionType -
+const (
+	SyncSubscription = SubscriptionType(iota)
+	AsyncSubscription
+)
+
 // Subscription -
 type Subscription interface {
-	Topic() string
-	Drain() error
-	Delivered() (int64, error)
+	Type() SubscriptionType
+	Topics() []string
 
-	Unsubscribe() (int, error)
-	AutoUnsubscribe(max int) error
+	Unsubscribe(topics ...string) (int, error)
+	AutoUnsubscribe(max int, topic string) error
 
-	Pending() (int, int, error)
-	MaxPending() (int, int, error)
-	PendingLimits() (int, int, error)
-	SetPendingLimits(msgLimit, bytesLimit int) error
-
-	// Serve for syncSubscribe
-	NextMsg(timeout time.Duration) (Packet, error)
+	// Serve for SubscribeSync
+	NextMsg(timeout time.Duration, topic string) (Packet, error)
 }
-
-// Then I want to us context.Context to manage goroutine
-
-// // Subscription -
-// type Subscription interface {
-// 	Subscriber
-
-// 	Topics() []string
-// }

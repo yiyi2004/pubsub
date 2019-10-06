@@ -18,7 +18,7 @@ type Broker struct {
 	Opts *BrokerOptions
 	// the key of M is either a "/" or a Group Path
 	// Group Path: groupPath/relativePath
-	M map[string]routes
+	M map[string]map[string]*route
 
 	group *Group
 	rw    *sync.Mutex
@@ -27,9 +27,8 @@ type Broker struct {
 }
 
 type route struct {
-	relativePath string
-	conn         *nats.Conn
-	mainHandler  pubsub.HandlerFunc
+	conn        *nats.Conn
+	mainHandler pubsub.HandlerFunc
 }
 
 type routes []*route
@@ -38,7 +37,7 @@ type routes []*route
 func NewBroker(opts ...nats.Option) *Broker {
 	b := &Broker{
 		rw: new(sync.Mutex),
-		M:  make(map[string]routes),
+		M:  make(map[string]map[string]*route),
 		Opts: &BrokerOptions{
 			Ctx:     context.Background(),
 			DefOpts: new(nats.Options),
@@ -80,16 +79,27 @@ func (b *Broker) CreatePublisher(opts ...pubsub.PublisherOptionFunc) pubsub.Publ
 }
 
 // CreateSubscriber -
-func (b *Broker) CreateSubscriber(opts ...pubsub.SubscriberOptionFunc) pubsub.Subscription {
+func (b *Broker) CreateSubscriber(opts ...pubsub.SubscriptionOptionFunc) pubsub.Subscription {
 	s := &Subscription{
 		rw: new(sync.Mutex),
 		Opts: &pubsub.SubscriberOptions{
 			Ctx: context.Background(),
 		},
+		Subs: make(map[string]*nats.Subscription),
 	}
 
 	for _, opt := range opts {
 		panic(opt(s.Opts))
+	}
+
+	if topic, ok := s.Opts.Ctx.Value(pubsub.Key("Topic")).(string); ok {
+		s.topic = topic
+	}
+	if isGroup, ok := s.Opts.Ctx.Value(pubsub.Key("IsGroup")).(bool); ok {
+		s.isGroup = isGroup
+	}
+	if subType, ok := s.Opts.Ctx.Value(pubsub.Key("SubscriptionType")).(pubsub.SubscriptionType); ok {
+		s.subtype = subType
 	}
 
 	return s
@@ -99,13 +109,15 @@ func (b *Broker) CreateSubscriber(opts ...pubsub.SubscriberOptionFunc) pubsub.Su
 
 // Topics -
 func (b *Broker) Topics() []string {
-	var res []string
+	var topics []string
 
-	for topic := range b.M {
-		res = append(res, topic)
+	for topic, routes := range b.M {
+		for relativePath := range routes {
+			topics = append(topics, joinPaths(topic, relativePath))
+		}
 	}
 
-	return res
+	return topics
 }
 
 // NumTopics -
@@ -164,7 +176,7 @@ func (b *Broker) Close(topics ...string) {
 }
 
 // AsyncSubscribe -
-func (b *Broker) AsyncSubscribe(topic string, handler pubsub.Handler) (pubsub.Subscriber, error) {
+func (b *Broker) AsyncSubscribe(topic string, handler pubsub.Handler) (pubsub.Subscription, error) {
 	if topic == "" {
 		return nil, errInvalidTopic
 	}
@@ -187,22 +199,22 @@ func (b *Broker) AsyncSubscribe(topic string, handler pubsub.Handler) (pubsub.Su
 	return s, nil
 }
 
-// Subscribe -
-func (b *Broker) Subscribe(topic string, handler pubsub.Handler) (pubsub.Subscriber, error) {
+// SubscribeSync -
+func (b *Broker) SubscribeSync(topic string, handler pubsub.Handler) (pubsub.Subscription, error) {
 	return nil, nil
 }
 
 // AsyncSubscribe -
-func AsyncSubscribe(topic string, handler pubsub.Handler) (pubsub.Subscriber, error) {
+func AsyncSubscribe(topic string, handler pubsub.Handler) (pubsub.Subscription, error) {
 	return nil, nil
 }
 
-// Subscribe -
-func Subscribe(topic string, handler pubsub.Handler) (pubsub.Subscriber, error) {
+// SubscribeSync -
+func SubscribeSync(topic string, handler pubsub.Handler) (pubsub.Subscription, error) {
 	return nil, nil
 }
 
-func (b *Broker) asyncSubscribe(topic string) (*Subscriber, error) {
+func (b *Broker) asyncSubscribe(topic string) (*Subscription, error) {
 	if b.sch == nil {
 		b.sch = make(chan *nats.Msg)
 	}
@@ -212,7 +224,7 @@ func (b *Broker) asyncSubscribe(topic string) (*Subscriber, error) {
 		return nil, err
 	}
 
-	s := &Subscriber{
+	s := &Subscription{
 		rw:    new(sync.Mutex),
 		topic: topic,
 		Sub:   sub,

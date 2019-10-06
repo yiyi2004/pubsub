@@ -81,3 +81,12 @@ func lastChar(str string) uint8 {
 func nameOfFunction(f interface{}) string {
 	return runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 }
+
+func insertBackSlash(str string) string {
+	finalPath := path.Join("/", str)
+	appendSlash := lastChar(str) == '/' && lastChar(finalPath) != '/'
+	if appendSlash {
+		return finalPath + "/"
+	}
+	return finalPath
+}

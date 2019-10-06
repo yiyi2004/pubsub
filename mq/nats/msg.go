@@ -1,7 +1,6 @@
 package nats
 
 import (
-	"github.com/nats-io/nats.go"
 	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
@@ -9,7 +8,9 @@ var _ pubsub.Packet = &Msg{}
 
 // Msg -
 type Msg struct {
-	*nats.Msg
+	topic string
+	reply string
+	data  []byte
 }
 
 // Type -
@@ -19,17 +20,17 @@ func (m *Msg) Type() string {
 
 // Topic -
 func (m *Msg) Topic() string {
-	return m.Subject
+	return m.topic
 }
 
 // Payload -
 func (m *Msg) Payload() []byte {
-	return m.Data
+	return m.data
 }
 
 // ReplyTopic -
 func (m *Msg) ReplyTopic() string {
-	return m.Reply
+	return m.reply
 }
 
 // Encode -
