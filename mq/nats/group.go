@@ -51,13 +51,6 @@ func (group *Group) calculateAbsolutePath(relativePath string) string {
 	return joinPaths(group.basePath, relativePath)
 }
 
-func (group *Group) returnObj() pubsub.IRoutes {
-	if group.root {
-		return group.broker
-	}
-	return group
-}
-
 func joinPaths(absolutePath, relativePath string) string {
 	if relativePath == "" {
 		return absolutePath
@@ -89,4 +82,11 @@ func insertBackSlash(str string) string {
 		return finalPath + "/"
 	}
 	return finalPath
+}
+
+func (group *Group) returnObj() pubsub.IRoutes {
+	if group.root {
+		return group.broker
+	}
+	return group
 }

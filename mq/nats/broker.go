@@ -75,11 +75,15 @@ func (b *Broker) CreatePublisher(opts ...pubsub.PublisherOptionFunc) pubsub.Publ
 		panic(opt(p.Opts))
 	}
 
+	if topic, ok := p.Opts.Ctx.Value(pubsub.Key("Topic")).(string); ok {
+		p.Topic = topic
+	}
+
 	return p
 }
 
-// CreateSubscriber -
-func (b *Broker) CreateSubscriber(opts ...pubsub.SubscriptionOptionFunc) pubsub.Subscription {
+// CreateSubscription -
+func (b *Broker) CreateSubscription(opts ...pubsub.SubscriptionOptionFunc) pubsub.Subscription {
 	s := &Subscription{
 		rw: new(sync.Mutex),
 		Opts: &pubsub.SubscriberOptions{
@@ -111,9 +115,9 @@ func (b *Broker) CreateSubscriber(opts ...pubsub.SubscriptionOptionFunc) pubsub.
 func (b *Broker) Topics() []string {
 	var topics []string
 
-	for topic, routes := range b.M {
+	for basePath, routes := range b.M {
 		for relativePath := range routes {
-			topics = append(topics, joinPaths(topic, relativePath))
+			topics = append(topics, joinPaths(basePath, relativePath))
 		}
 	}
 
