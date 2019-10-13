@@ -15,10 +15,11 @@ const (
 type Subscription interface {
 	Type() SubscriptionType
 	Topics() []string
-
 	Unsubscribe(topics ...string) (int, error)
 	AutoUnsubscribe(max int, topic string) error
+	Close()
 
-	// Serve for SubscribeSync
-	NextMsg(timeout time.Duration, topic string) (Packet, error)
+	Filter(in chan Packet, quit chan struct{}, filters ...func(Packet) bool) (out chan Packet)
+	// Serve for SubscribeSync and AsyncSusbcribe
+	NextMsg(timeout time.Duration, topic string, out chan Packet, errChan chan error)
 }

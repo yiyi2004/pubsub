@@ -2,22 +2,16 @@ package pubsub
 
 // Broker -
 type Broker interface {
-	Topic
+	Topics() []string
+	NumTopics() int
+	NumSubcribers(topic string) int
+	Close() error
+
+	AsyncSubscribe(topic string, handler Handler) (Subscription, error)
+	SubscribeSync(topic string, handler Handler) (Subscription, error)
 
 	CreatePublisher(opts ...PublisherOptionFunc) Publisher
 	CreateSubscription(opts ...SubscriptionOptionFunc) Subscription
-}
-
-// Topic -
-type Topic interface {
-	Topics() []string
-	NumTopics() int
-	RegisterTopic(topic string) (conn interface{}, err error)
-	NumSubcribers(topic string) int
-	Close(topics ...string)
-
-	AsyncSubscribe(topic string, handler Handler) (Subscription, error)
-	Subscribe(topic string, handler Handler) (Subscription, error)
 }
 
 // StatusInfo -

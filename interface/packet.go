@@ -1,7 +1,5 @@
 package pubsub
 
-import "github.com/zhangce1999/pubsub/codec"
-
 // Packet is a packet in pubsub system
 type Packet interface {
 	// Type is MQ's type; such as nats, kafka, rabbitMQ and so on
@@ -12,6 +10,4 @@ type Packet interface {
 	// if func: Reply is not used, Reply will return empty string
 	ReplyTopic() string
 	// EncType includes JSON. to be continued
-	codec.Encoder
-	codec.Decoder
 }
