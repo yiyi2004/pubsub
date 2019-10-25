@@ -1,5 +1,7 @@
 package pubsub
 
+import "context"
+
 // Broker -
 type Broker interface {
 	Topics() []string
@@ -7,8 +9,8 @@ type Broker interface {
 	NumSubcribers(topic string) int
 	Close() error
 
-	AsyncSubscribe(topic string, handler Handler) (Subscription, error)
-	SubscribeSync(topic string, handler Handler) (Subscription, error)
+	AsyncSubscribe(ctx context.Context, topic string, handler HandlerFunc) (Subscription, error)
+	SubscribeSync(ctx context.Context, topic string, handler HandlerFunc) (Subscription, error)
 
 	CreatePublisher(opts ...PublisherOptionFunc) Publisher
 	CreateSubscription(opts ...SubscriptionOptionFunc) Subscription
@@ -43,17 +45,7 @@ const (
 )
 
 // HandlerFunc -
-type HandlerFunc func(msg Packet)
+type HandlerFunc func(in chan Packet, errChan chan error) (out chan Packet)
 
 // HandlersChain -
 type HandlersChain []HandlerFunc
-
-// Handle -
-func (h HandlerFunc) Handle(packet Packet) {
-	h(packet)
-}
-
-// Handler -s
-type Handler interface {
-	Handle(packet Packet)
-}

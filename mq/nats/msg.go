@@ -32,13 +32,3 @@ func (m *Msg) Payload() []byte {
 func (m *Msg) ReplyTopic() string {
 	return m.reply
 }
-
-// Encode -
-func (m *Msg) Encode() ([]byte, error) {
-	return nil, nil
-}
-
-// Decode -
-func (m *Msg) Decode(v interface{}) error {
-	return nil
-}

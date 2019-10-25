@@ -2,47 +2,38 @@ package nats
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"sync"
 
 	"github.com/nats-io/nats.go"
 	pubsub "github.com/zhangce1999/pubsub/interface"
+	common "github.com/zhangce1999/pubsub/mq"
 )
 
 var _ pubsub.Broker = &Broker{}
 
 // Broker -
 type Broker struct {
-	URL  string
-	Opts *BrokerOptions
-	// the key of M is either a "/" or a Group Path
-	// Group Path: groupPath/relativePath
-	M map[string]map[string]*route
+	URL             string
+	Opts            *BrokerOptions
+	DefaultHandlers pubsub.HandlersChain
 
-	group *Group
-	rw    *sync.Mutex
-	// sch represents a sync channel
-	sch chan *nats.Msg
+	cancel context.CancelFunc
+	tree   common.Trie
+	group  *Group
+	rw     *sync.Mutex
+	sch    chan *nats.Msg
 }
-
-type route struct {
-	conn        *nats.Conn
-	mainHandler pubsub.HandlerFunc
-}
-
-type routes []*route
 
 // NewBroker -
 func NewBroker(opts ...nats.Option) *Broker {
 	b := &Broker{
 		rw: new(sync.Mutex),
-		M:  make(map[string]map[string]*route),
 		Opts: &BrokerOptions{
 			Ctx:     context.Background(),
 			DefOpts: new(nats.Options),
 		},
-		sch: make(chan *nats.Msg),
+		sch:  make(chan *nats.Msg),
+		tree: common.NewTrie('/'),
 	}
 
 	b.group = &Group{
@@ -109,145 +100,20 @@ func (b *Broker) CreateSubscription(opts ...pubsub.SubscriptionOptionFunc) pubsu
 	return s
 }
 
-// Topic manager
-
 // Topics -
-func (b *Broker) Topics() []string {
-	var topics []string
-
-	for basePath, routes := range b.M {
-		for relativePath := range routes {
-			topics = append(topics, joinPaths(basePath, relativePath))
-		}
-	}
-
-	return topics
-}
+func (b *Broker) Topics() []string
 
 // NumTopics -
-func (b *Broker) NumTopics() int {
-	return len(b.Topics())
-}
-
-// RegisterTopic -
-func (b *Broker) RegisterTopic(topic string) (interface{}, error) {
-	b.rw.Lock()
-	if conn, ok := b.M[topic]; ok {
-		b.rw.Unlock()
-		return conn, nil
-	}
-
-	conn, err := b.Opts.Connect()
-	if err != nil {
-		return nil, err
-	}
-
-	b.rw.Lock()
-	b.M[topic] = conn
-	b.rw.Unlock()
-
-	return conn, nil
-}
+func (b *Broker) NumTopics() int
 
 // NumSubcribers -
-// If the NumSubscrubers is a negative number
-// it represents that connection isn't existed
-func (b *Broker) NumSubcribers(topic string) int {
-	if conn, ok := b.M[topic]; ok {
-		return conn.NumSubscriptions()
-	}
+func (b *Broker) NumSubcribers(topic string) int
 
-	log.Printf("[error]: topic: %s has no corresponding connection\n", topic)
-	return -1
-}
-
-// Close will close all connections when input len(topics) == 0
-// if len(topics) != 0, Close will close the particular connections
-func (b *Broker) Close(topics ...string) {
-	if len(topics) == 0 {
-		for _, conn := range b.M {
-			conn.Close()
-		}
-	}
-
-	for _, topic := range topics {
-		if conn, ok := b.M[topic]; ok {
-			conn.Close()
-		} else {
-			log.Printf("[log]: topic %s is not existed\n", topic)
-		}
-	}
-}
+// Close -
+func (b *Broker) Close() error
 
 // AsyncSubscribe -
-func (b *Broker) AsyncSubscribe(topic string, handler pubsub.Handler) (pubsub.Subscription, error) {
-	if topic == "" {
-		return nil, errInvalidTopic
-	}
-
-	if handler == nil {
-		handler = pubsub.HandlerFunc(deploy)
-	}
-
-	if _, ok := b.M[topic]; !ok {
-		if _, err := b.RegisterTopic(topic); err != nil {
-			return nil, err
-		}
-	}
-
-	s, err := b.asyncSubscribe(topic)
-	if err != nil {
-		return nil, err
-	}
-
-	return s, nil
-}
+func (b *Broker) AsyncSubscribe(ctx context.Context, topic string, handler pubsub.HandlerFunc) (pubsub.Subscription, error)
 
 // SubscribeSync -
-func (b *Broker) SubscribeSync(topic string, handler pubsub.Handler) (pubsub.Subscription, error) {
-	return nil, nil
-}
-
-// AsyncSubscribe -
-func AsyncSubscribe(topic string, handler pubsub.Handler) (pubsub.Subscription, error) {
-	return nil, nil
-}
-
-// SubscribeSync -
-func SubscribeSync(topic string, handler pubsub.Handler) (pubsub.Subscription, error) {
-	return nil, nil
-}
-
-func (b *Broker) asyncSubscribe(topic string) (*Subscription, error) {
-	if b.sch == nil {
-		b.sch = make(chan *nats.Msg)
-	}
-
-	sub, err := b.M[topic].ChanSubscribe(topic, b.sch)
-	if err != nil {
-		return nil, err
-	}
-
-	s := &Subscription{
-		rw:    new(sync.Mutex),
-		topic: topic,
-		Sub:   sub,
-	}
-
-	return s, nil
-}
-
-func deploy(msg pubsub.Packet) {
-	fmt.Printf("Topic: %s, Payload: %s\n", msg.Topic(), string(msg.Payload()))
-}
-
-// // CreateMultiPublisher -
-// func (b *Broker) CreateMultiPublisher(opts ...pubsub.PublisherOptionFunc) pubsub.Publisher {
-// 	return &MultiPublisher{
-// 		rw:                    new(sync.Mutex),
-// 		DefaultOptionFuncs:    opts,
-// 		PublishersOptionFuncs: make(map[string][]pubsub.PublisherOptionFunc),
-// 		Publishers:            make(map[string]*Publisher),
-// 		Max:                   -1,
-// 	}
-// }
+func (b *Broker) SubscribeSync(ctx context.Context, topic string, handler pubsub.HandlerFunc) (pubsub.Subscription, error)

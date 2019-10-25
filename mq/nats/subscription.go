@@ -1,11 +1,11 @@
 package nats
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	"github.com/nats-io/nats.go"
-	"github.com/zhangce1999/pubsub/codec"
 	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
@@ -29,140 +29,22 @@ type Subscription struct {
 }
 
 // Type -
-func (s *Subscription) Type() pubsub.SubscriptionType {
-	return s.subtype
-}
+func (s *Subscription) Type() pubsub.SubscriptionType
 
 // Topics -
-func (s *Subscription) Topics() []string {
-	s.rw.Lock()
-	defer s.rw.Unlock()
-
-	var topics []string
-
-	if routes, ok := s.broker.M[s.topic]; ok {
-		for relativePath := range routes {
-			topics = append(topics, joinPaths(s.topic, relativePath))
-		}
-		return topics
-	}
-
-	topics = append(topics, s.topic)
-	return topics
-}
+func (s *Subscription) Topics() []string
 
 // Unsubscribe -
-func (s *Subscription) Unsubscribe(topics ...string) (num int, err error) {
-	s.rw.Lock()
-	defer s.rw.Unlock()
-
-	if s.isGroup {
-		if len(topics) == 0 {
-			for relativePath, sub := range s.Subs {
-				num++
-
-				sub.Unsubscribe()
-				s.broker.M[s.topic][relativePath].conn.Close()
-
-				delete(s.Subs, relativePath)
-				delete(s.broker.M[s.topic], relativePath)
-			}
-
-			return num, nil
-		}
-
-		for _, topic := range topics {
-			topic = insertBackSlash(topic)
-			for relativePath, sub := range s.Subs {
-				targetTopic := joinPaths(s.topic, relativePath)
-				if topic == targetTopic {
-					num++
-
-					sub.Unsubscribe()
-					s.broker.M[s.topic][relativePath].conn.Close()
-
-					delete(s.Subs, relativePath)
-					delete(s.broker.M[s.topic], relativePath)
-				}
-			}
-		}
-
-		return num, nil
-	}
-
-	if err = s.Subs[s.topic].Unsubscribe(); err != nil {
-		return
-	}
-
-	delete(s.Subs, s.topic)
-	delete(s.broker.M["/"], s.topic)
-	return
-}
+func (s *Subscription) Unsubscribe(topics ...string) (int, error)
 
 // AutoUnsubscribe -
-func (s *Subscription) AutoUnsubscribe(max int, topic string) error {
-	s.rw.Lock()
-	defer s.rw.Unlock()
+func (s *Subscription) AutoUnsubscribe(max int, topic string) error
 
-	topic = insertBackSlash(topic)
-	if s.isGroup {
-		if s.topic == topic {
-			for _, sub := range s.Subs {
-				sub.AutoUnsubscribe(max)
-			}
+// Close -
+func (s *Subscription) Close()
 
-			s.Subs = make(map[string]*nats.Subscription)
-		}
-
-		for relativePath, sub := range s.Subs {
-			targetTopic := joinPaths(s.topic, relativePath)
-			if topic == targetTopic {
-				return sub.AutoUnsubscribe(max)
-			}
-		}
-	}
-
-	return s.Subs[s.topic].AutoUnsubscribe(max)
-}
+// Filter -
+func (s *Subscription) Filter(ctx context.Context, in chan pubsub.Packet, quit chan struct{}, filters ...func(pubsub.Packet) bool) (out chan pubsub.Packet)
 
 // NextMsg -
-func (s *Subscription) NextMsg(timeout time.Duration, topic string) (pubsub.Packet, error) {
-	s.rw.Lock()
-	defer s.rw.Unlock()
-
-	if !s.isGroup {
-		msg, err := s.Subs[s.topic].NextMsg(timeout)
-		if err != nil {
-			return nil, err
-		}
-
-		var res Msg
-
-		if err := codec.GobDecode(msg.Data, &res); err != nil {
-			return nil, err
-		}
-
-		return &res, nil
-	}
-
-	topic = insertBackSlash(topic)
-	for relativePath, sub := range s.Subs {
-		targetTopic := joinPaths(s.topic, relativePath)
-		if topic == targetTopic {
-			msg, err := sub.NextMsg(timeout)
-			if err != nil {
-				return nil, err
-			}
-
-			var res Msg
-
-			if err := codec.GobDecode(msg.Data, &res); err != nil {
-				return nil, err
-			}
-
-			return &res, nil
-		}
-	}
-
-	return nil, errInvalidTopic
-}
+func (s *Subscription) NextMsg(timeout time.Duration, topic string, out chan pubsub.Packet, errChan chan error)

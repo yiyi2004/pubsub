@@ -1,6 +1,9 @@
 package pubsub
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // SubscriptionType -
 type SubscriptionType int
@@ -19,7 +22,7 @@ type Subscription interface {
 	AutoUnsubscribe(max int, topic string) error
 	Close()
 
-	Filter(in chan Packet, quit chan struct{}, filters ...func(Packet) bool) (out chan Packet)
+	Filter(ctx context.Context, in chan Packet, quit chan struct{}, filters ...func(Packet) bool) (out chan Packet)
 	// Serve for SubscribeSync and AsyncSusbcribe
 	NextMsg(timeout time.Duration, topic string, out chan Packet, errChan chan error)
 }

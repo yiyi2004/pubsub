@@ -1,12 +1,10 @@
 package nats
 
 import (
+	"context"
 	"errors"
-	"log"
 	"sync"
 
-	"github.com/nats-io/nats.go"
-	"github.com/zhangce1999/pubsub/codec"
 	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
@@ -30,105 +28,18 @@ type Publisher struct {
 	Topic   string
 	MsgsNum int
 	Opts    *pubsub.PublisherOptions
+
+	cancel context.CancelFunc
 }
 
-// Publish will publish raw data to topic
-func (p *Publisher) Publish(b pubsub.Broker, topic string, data []byte) error {
-	log.Printf("[pub]: publish message to topic: %s\n", topic)
-	broker, ok := b.(*Broker)
-	if !ok {
-		return errInvalidBroker
-	}
+// Publish -
+func (p *Publisher) Publish(ctx context.Context, b pubsub.Broker, topic string, in chan string, errChan chan error)
 
-	if topic != "" {
-		p.Topic = topic
-	} else {
-		return errInvalidTopic
-	}
+// PublishRequest -
+func (p *Publisher) PublishRequest(ctx context.Context, b pubsub.Broker, topic string, reply string, in chan string, errChan chan error)
 
-	if len(data) == 0 {
-		return errEmptyData
-	}
+// Flush -
+func (p *Publisher) Flush() error
 
-	return p.publish(broker, data)
-}
-
-func (p *Publisher) publish(b *Broker, data []byte) error {
-	conn, err := b.RegisterTopic(p.Topic)
-	if err != nil {
-		return err
-	}
-
-	if max, ok := p.Opts.Ctx.Value("MAX_MESSAGES").(int); ok {
-		if p.MsgsNum >= max && max > 0 {
-			log.Fatal(`[log]: the amount of messages that can be sent have
-						have reached the maximum`)
-		}
-	}
-
-	if conn, ok := conn.(*nats.Conn); ok {
-		encData, err := encode(p.Topic, data)
-		if err != nil {
-			return err
-		}
-
-		if err := conn.Publish(p.Topic, encData); err == nil {
-			if err := conn.Flush(); err != nil {
-				return err
-			}
-
-			p.MsgsNum++
-
-			return nil
-		}
-	}
-
-	return errInvalidConnection
-}
-
-// PublishMsg will be abondoned
-func (p *Publisher) PublishMsg(b pubsub.Broker, pkg pubsub.Packet) error {
-	broker, ok := b.(*Broker)
-	if !ok {
-		return errInvalidBroker
-	}
-
-	if pkg.Topic() == "" {
-		return errInvalidTopic
-	}
-
-	if len(pkg.Payload()) == 0 {
-		return errEmptyData
-	}
-
-	return p.publishMsg(broker, pkg)
-}
-
-func (p *Publisher) publishMsg(b *Broker, pkg pubsub.Packet) error {
-	conn, err := b.RegisterTopic(pkg.Topic())
-	if err != nil {
-		return err
-	}
-
-	if conn, ok := conn.(nats.Conn); ok {
-		if err := conn.Publish(pkg.Topic(), pkg.Payload()); err == nil {
-			if err := conn.Flush(); err != nil {
-				return err
-			}
-
-			p.MsgsNum++
-
-			return nil
-		}
-	}
-
-	return errInvalidConnection
-}
-
-func encode(topic string, data []byte) (res []byte, err error) {
-	msg := Msg{}
-	msg.topic = topic
-	msg.data = data
-
-	return codec.GobEncode(&msg)
-}
+// Close -
+func (p *Publisher) Close()
