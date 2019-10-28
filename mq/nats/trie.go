@@ -1,11 +1,11 @@
-package trie
+package nats
 
 import (
 	"errors"
 	"strings"
 	"sync"
 
-	pubsub "github.com/zhangce1999/pubsub/interface"
+	nats "github.com/nats-io/nats.go"
 )
 
 // DefaultSeparator -
@@ -20,39 +20,42 @@ type Trie interface {
 	Clear()
 
 	// Trie interface, middlewares will be executed in order
-	Add(route string, middlewares ...pubsub.HandlerFunc) error
-	Search(route string) (pubsub.HandlersChain, error)
-	Delete(route string)
+	Put(route string, conn *nats.Conn) bool
+	Get(route string) (*nats.Conn, error)
+	Remove(route string)
+
+	IsGroup(route string) ([]string, bool)
 }
 
 // NewTrie -
-func NewTrie(separator rune) Trie {
-	if separator == 0 {
-		separator = DefaultSeparator
+func NewTrie(sep rune) Trie {
+	if sep == 0 {
+		sep = DefaultSeparator
 	}
 
 	return &trie{
 		node: &node{
 			word: "/",
 		},
-		size:      0,
-		separator: separator,
-		mu:        new(sync.Mutex),
+		size: 0,
+		sep:  sep,
+		mu:   new(sync.Mutex),
 	}
 }
 
 type trie struct {
-	node      *node
-	size      int
-	separator rune
-	mu        *sync.Mutex
+	node *node
+	size int
+	sep  rune // sep represents the separator
+	mu   *sync.Mutex
 }
 
 type node struct {
+	isGroup  bool
 	word     string
 	parent   *node
 	children map[string]*node
-	handlers pubsub.HandlersChain
+	conn     map[string]*nats.Conn
 }
 
 func (t *trie) Empty() bool {
@@ -66,11 +69,11 @@ func (t *trie) Size() int {
 func (t *trie) Clear() {
 	t.node = &node{}
 	t.size = 0
-	t.separator = 0
+	t.sep = 0
 }
 
-func (t *trie) Add(route string, handlers ...pubsub.HandlerFunc) error {
-	query, err := splitWithSeparator(route, t.separator)
+func (t *trie) Put(route string, conn *nats.Conn) error {
+	query, err := splitWithSeparator(route, t.sep)
 	if err != nil {
 		return err
 	}
@@ -84,50 +87,36 @@ func (t *trie) Add(route string, handlers ...pubsub.HandlerFunc) error {
 				word:     word,
 				parent:   curr,
 				children: make(map[string]*node),
+				conn:     make(map[string]*nats.Conn),
 			}
 			curr.children[word] = child
 		}
 		curr = child
 	}
 
-	// Add the handlers
-	curr.handlers = handlers
+	// Add Connection
+	curr.conn[route] = conn
+	t.size++
 	t.mu.Unlock()
 	return nil
 }
 
-func (t *trie) Search(route string) (pubsub.HandlersChain, error) {
-	query, err := splitWithSeparator(route, t.separator)
-	if err != nil {
-		return nil, err
-	}
+func (t *trie) Get(route string) (*nats.Conn, error) {
 
-	var res pubsub.HandlersChain
-
-	t.mu.Lock()
-	t.search(query, &res, t.node)
-	t.mu.Unlock()
-
-	return res, nil
 }
 
-func (t *trie) search(query []string, res *pubsub.HandlersChain, node *node) {
-	// Add handlers from the current node
-	if len(*res) > 0 {
-		*res = append(*res, node.handlers...)
-	}
-
+func (t *trie) get(query []string, res *nats.Conn, node *node) {
 	// If we're not yet done, continue
 	if len(query) > 0 {
 		// Go through the exact match node
 		if n, ok := node.children[query[0]]; ok {
-			t.search(query[1:], res, n)
+			t.get(query[1:], res, n)
 		}
 	}
 }
 
-func (t *trie) Delete(route string) {
-	query, err := splitWithSeparator(route, t.separator)
+func (t *trie) Remove(route string) {
+	query, err := splitWithSeparator(route, t.sep)
 	if err != nil {
 		return
 	}
@@ -152,13 +141,13 @@ func (t *trie) Delete(route string) {
 	return
 }
 
-func splitWithSeparator(route string, separator rune) ([]string, error) {
+func splitWithSeparator(route string, sep rune) ([]string, error) {
 	if route == "" {
 		return nil, errors.New("[error]: invalid route")
 	}
 
 	return strings.FieldsFunc(route, func(r rune) bool {
-		return r == separator
+		return r == sep
 	}), nil
 }
 
@@ -169,7 +158,7 @@ func (n *node) orphan() {
 
 	delete(n.parent.children, n.word)
 
-	if len(n.parent.handlers) == 0 && len(n.parent.children) == 0 {
+	if len(n.parent.conn) == 0 && len(n.parent.children) == 0 {
 		n.parent.orphan()
 	}
 }

@@ -16,13 +16,13 @@ type Group struct {
 	root     bool
 	basePath string
 	broker   *Broker
-	handlers pubsub.HandlersChain
+	Handlers pubsub.HandlersChain
 }
 
 // Group -
-func (group *Group) Group(relativePath string, handlers ...pubsub.HandlerFunc) pubsub.Group {
+func (group *Group) Group(relativePath string, Handlers ...pubsub.HandlerFunc) pubsub.Group {
 	return &Group{
-		handlers: group.combineHandlers(handlers),
+		Handlers: group.combineHandlers(Handlers),
 		basePath: group.calculateAbsolutePath(relativePath),
 		broker:   group.broker,
 	}
@@ -33,16 +33,16 @@ func (group *Group) Use(middlewares ...pubsub.HandlerFunc) pubsub.IRoutes {
 	return nil
 }
 
-func (group *Group) combineHandlers(handlers pubsub.HandlersChain) pubsub.HandlersChain {
-	finalSize := len(group.handlers) + len(handlers)
+func (group *Group) combineHandlers(Handlers pubsub.HandlersChain) pubsub.HandlersChain {
+	finalSize := len(group.Handlers) + len(Handlers)
 	if finalSize >= int(abortIndex) {
-		panic("too many handlers")
+		panic("too many Handlers")
 	}
 
 	mergedHandlers := make(pubsub.HandlersChain, finalSize)
 
-	copy(mergedHandlers, group.handlers)
-	copy(mergedHandlers[len(group.handlers):], handlers)
+	copy(mergedHandlers, group.Handlers)
+	copy(mergedHandlers[len(group.Handlers):], Handlers)
 
 	return mergedHandlers
 }

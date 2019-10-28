@@ -6,20 +6,20 @@ import (
 
 	"github.com/nats-io/nats.go"
 	pubsub "github.com/zhangce1999/pubsub/interface"
-	common "github.com/zhangce1999/pubsub/mq"
 )
 
 var _ pubsub.Broker = &Broker{}
+var _ pubsub.Group = &Broker{}
 
 // Broker -
 type Broker struct {
 	URL             string
 	Opts            *BrokerOptions
 	DefaultHandlers pubsub.HandlersChain
+	Group
 
-	cancel context.CancelFunc
-	tree   common.Trie
-	group  *Group
+	topics []string
+	tree   Trie
 	rw     *sync.Mutex
 	sch    chan *nats.Msg
 }
@@ -33,14 +33,15 @@ func NewBroker(opts ...nats.Option) *Broker {
 			DefOpts: new(nats.Options),
 		},
 		sch:  make(chan *nats.Msg),
-		tree: common.NewTrie('/'),
+		tree: NewTrie('/'),
+		Group: Group{
+			root:     true,
+			basePath: "/",
+			Handlers: nil,
+		},
 	}
 
-	b.group = &Group{
-		root:     true,
-		basePath: "/",
-		broker:   b,
-	}
+	b.Group.broker = b
 
 	if NATSURL == "" {
 		b.URL = nats.DefaultURL
@@ -101,13 +102,23 @@ func (b *Broker) CreateSubscription(opts ...pubsub.SubscriptionOptionFunc) pubsu
 }
 
 // Topics -
-func (b *Broker) Topics() []string
+func (b *Broker) Topics() []string {
+	b.rw.Lock()
+	defer b.rw.Unlock()
+	return b.topics
+}
 
 // NumTopics -
-func (b *Broker) NumTopics() int
+func (b *Broker) NumTopics() int {
+	b.rw.Lock()
+	defer b.rw.Unlock()
+	return len(b.topics)
+}
 
 // NumSubcribers -
-func (b *Broker) NumSubcribers(topic string) int
+func (b *Broker) NumSubcribers(topic string) int {
+	return 0
+}
 
 // Close -
 func (b *Broker) Close() error
@@ -117,3 +128,5 @@ func (b *Broker) AsyncSubscribe(ctx context.Context, topic string, handler pubsu
 
 // SubscribeSync -
 func (b *Broker) SubscribeSync(ctx context.Context, topic string, handler pubsub.HandlerFunc) (pubsub.Subscription, error)
+
+func (b *Broker) QueueSubscribeSync(ctx context.Context, topic string, queue string) (Subscription, error)

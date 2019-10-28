@@ -11,6 +11,7 @@ type Broker interface {
 
 	AsyncSubscribe(ctx context.Context, topic string, handler HandlerFunc) (Subscription, error)
 	SubscribeSync(ctx context.Context, topic string, handler HandlerFunc) (Subscription, error)
+	QueueSubscribeSync(ctx context.Context, topic string, queue string) (Subscription, error)
 
 	CreatePublisher(opts ...PublisherOptionFunc) Publisher
 	CreateSubscription(opts ...SubscriptionOptionFunc) Subscription
@@ -49,3 +50,11 @@ type HandlerFunc func(in chan Packet, errChan chan error) (out chan Packet)
 
 // HandlersChain -
 type HandlersChain []HandlerFunc
+
+// Last -
+func (c HandlersChain) Last() HandlerFunc {
+	if length := len(c); length > 0 {
+		return c[length-1]
+	}
+	return nil
+}
