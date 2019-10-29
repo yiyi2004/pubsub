@@ -1,2 +1,3 @@
 # have a try with shell
-docker run --name nats_test -p 4222:4222 nats -a 127.0.0.1
+docker rm nats_test
+docker run --name nats_test -it nats -c config.yml

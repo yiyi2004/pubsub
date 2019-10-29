@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nats-io/nats.go"
 	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
@@ -18,14 +17,15 @@ var _ pubsub.Subscription = &Subscription{}
 
 // Subscription -
 type Subscription struct {
-	isGroup bool
-	rw      *sync.Mutex
-	topic   string
-	broker  *Broker
-	subtype pubsub.SubscriptionType
 	// Sub is a nats.Subscription which represensts interest in the given topic.
-	Subs map[string]*nats.Subscription
 	Opts *pubsub.SubscriberOptions
+
+	group
+	rw     *sync.Mutex
+	broker *Broker
+
+	tree    Trie
+	subtype pubsub.SubscriptionType
 }
 
 // Type -

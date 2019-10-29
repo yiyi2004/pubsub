@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	nats "github.com/nats-io/nats.go"
+	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
 // DefaultSeparator -
@@ -20,8 +21,8 @@ type Trie interface {
 	Clear()
 
 	// Trie interface, middlewares will be executed in order
-	Put(route string, conn *nats.Conn) bool
-	Get(route string) (*nats.Conn, error)
+	Put(route string, handlers ...pubsub.HandlerFunc) bool
+	Get(route string) (pubsub.HandlersChain, error)
 	Remove(route string)
 
 	IsGroup(route string) ([]string, bool)

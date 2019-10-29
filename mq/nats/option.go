@@ -10,10 +10,9 @@ import (
 // BrokerOptions -
 type BrokerOptions struct {
 	CustomedOptFunc []nats.Option
-	// DefOpts represents a default nats Options
-	UseDefault bool
-	DefOpts    *nats.Options
-	Ctx        context.Context
+	UseDefault      bool
+	DefOpts         *nats.Options
+	Ctx             context.Context
 }
 
 // BrokerOptionFunc -

@@ -28,8 +28,6 @@ type Publisher struct {
 	Topic   string
 	MsgsNum int
 	Opts    *pubsub.PublisherOptions
-
-	cancel context.CancelFunc
 }
 
 // Publish -

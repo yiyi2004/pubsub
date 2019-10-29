@@ -9,19 +9,26 @@ import (
 )
 
 var _ pubsub.Broker = &Broker{}
-var _ pubsub.Group = &Broker{}
 
 // Broker -
 type Broker struct {
-	URL             string
-	Opts            *BrokerOptions
-	DefaultHandlers pubsub.HandlersChain
-	Group
+	URL      string
+	Opts     *BrokerOptions
+	Handlers pubsub.HandlersChain
 
-	topics []string
-	tree   Trie
-	rw     *sync.Mutex
-	sch    chan *nats.Msg
+	// if the topic has a prefix of some group, it must be added to this group
+	// so if you don't want this topic in a group, make sure that it is not a
+	// group topic
+	conns map[string]*conn
+	rw    *sync.Mutex
+	sch   chan *nats.Msg
+}
+
+// if isGroup != true, len(relaPath) == 0
+type conn struct {
+	relaPaths []string
+	isGroup   bool
+	nc        *nats.Conn
 }
 
 // NewBroker -
@@ -34,14 +41,14 @@ func NewBroker(opts ...nats.Option) *Broker {
 		},
 		sch:  make(chan *nats.Msg),
 		tree: NewTrie('/'),
-		Group: Group{
+		group: group{
 			root:     true,
 			basePath: "/",
 			Handlers: nil,
 		},
 	}
 
-	b.Group.broker = b
+	b.group.broker = b
 
 	if NATSURL == "" {
 		b.URL = nats.DefaultURL
@@ -129,4 +136,5 @@ func (b *Broker) AsyncSubscribe(ctx context.Context, topic string, handler pubsu
 // SubscribeSync -
 func (b *Broker) SubscribeSync(ctx context.Context, topic string, handler pubsub.HandlerFunc) (pubsub.Subscription, error)
 
-func (b *Broker) QueueSubscribeSync(ctx context.Context, topic string, queue string) (Subscription, error)
+// QueueSubscribeSync -
+func (b *Broker) QueueSubscribeSync(ctx context.Context, topic string, queue string) (pubsub.Subscription, error)

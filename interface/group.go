@@ -3,7 +3,7 @@ package pubsub
 // Group -
 type Group interface {
 	IRoutes
-	Group(string, ...HandlerFunc) Group
+	Group(relativePath string, handlers ...HandlerFunc) Group
 }
 
 // IRoutes -

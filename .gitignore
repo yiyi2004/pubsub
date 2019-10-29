@@ -1,2 +1,5 @@
 examples/
 log/
+codec/
+server/
+pkg/

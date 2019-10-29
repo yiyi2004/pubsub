@@ -11,44 +11,44 @@ import (
 
 const abortIndex int8 = math.MaxInt8 / 2
 
-// Group -
-type Group struct {
+// group -
+type group struct {
 	root     bool
 	basePath string
 	broker   *Broker
 	Handlers pubsub.HandlersChain
 }
 
-// Group -
-func (group *Group) Group(relativePath string, Handlers ...pubsub.HandlerFunc) pubsub.Group {
-	return &Group{
-		Handlers: group.combineHandlers(Handlers),
-		basePath: group.calculateAbsolutePath(relativePath),
-		broker:   group.broker,
+// group -
+func (g *group) Group(relativePath string, Handlers ...pubsub.HandlerFunc) pubsub.Group {
+	return &group{
+		Handlers: g.combineHandlers(Handlers),
+		basePath: g.calculateAbsolutePath(relativePath),
+		broker:   g.broker,
 	}
 }
 
 // Use -
-func (group *Group) Use(middlewares ...pubsub.HandlerFunc) pubsub.IRoutes {
+func (g *group) Use(middlewares ...pubsub.HandlerFunc) pubsub.IRoutes {
 	return nil
 }
 
-func (group *Group) combineHandlers(Handlers pubsub.HandlersChain) pubsub.HandlersChain {
-	finalSize := len(group.Handlers) + len(Handlers)
+func (g *group) combineHandlers(Handlers pubsub.HandlersChain) pubsub.HandlersChain {
+	finalSize := len(g.Handlers) + len(Handlers)
 	if finalSize >= int(abortIndex) {
 		panic("too many Handlers")
 	}
 
 	mergedHandlers := make(pubsub.HandlersChain, finalSize)
 
-	copy(mergedHandlers, group.Handlers)
-	copy(mergedHandlers[len(group.Handlers):], Handlers)
+	copy(mergedHandlers, g.Handlers)
+	copy(mergedHandlers[len(g.Handlers):], Handlers)
 
 	return mergedHandlers
 }
 
-func (group *Group) calculateAbsolutePath(relativePath string) string {
-	return joinPaths(group.basePath, relativePath)
+func (g *group) calculateAbsolutePath(relativePath string) string {
+	return joinPaths(g.basePath, relativePath)
 }
 
 func joinPaths(absolutePath, relativePath string) string {
@@ -84,9 +84,9 @@ func insertBackSlash(str string) string {
 	return finalPath
 }
 
-func (group *Group) returnObj() pubsub.IRoutes {
-	if group.root {
-		return group.broker
+func (g *group) returnObj() pubsub.IRoutes {
+	if g.root {
+		return g.broker
 	}
-	return group
+	return g
 }

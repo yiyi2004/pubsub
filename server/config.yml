@@ -11,22 +11,21 @@ authorization {
 }
  
 cluster {
- 
- host: '127.0.0.1' 
- port: 4244    
- 
- authorization {
-  user: route_user
-  password: T0pS3cr3tT00!
-  timeout: 0.5
- }
- 
- # Routes are actively solicited and connected to from this server.
- # Other servers can connect to us if they supply the correct credentials
- # in their routes definitions from above.
- routes = [
-  nats-route://user1:pass1@127.0.0.1:4245
-  nats-route://user2:pass2@127.0.0.1:4246
+ host: '127.0.0.1'
+ port: 4244
+   
+ authorization {
+  user: route_user
+  password: T0pS3cr3tT00!
+  timeout: 0.5
+ }
+   
+# Routes are actively solicited and connected to from this server.
+# Other servers can connect to us if they supply the correct credentials
+# in their routes definitions from above.
+ routes = [
+  nats-route://user1:pass1@127.0.0.1:4245
+  nats-route://user2:pass2@127.0.0.1:4246
  ]
 }
  
