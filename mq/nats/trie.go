@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	nats "github.com/nats-io/nats.go"
 	pubsub "github.com/zhangce1999/pubsub/interface"
 )
 
@@ -21,11 +20,9 @@ type Trie interface {
 	Clear()
 
 	// Trie interface, middlewares will be executed in order
-	Put(route string, handlers ...pubsub.HandlerFunc) bool
+	Put(route string, handlers ...pubsub.HandlerFunc) error
 	Get(route string) (pubsub.HandlersChain, error)
 	Remove(route string)
-
-	IsGroup(route string) ([]string, bool)
 }
 
 // NewTrie -
@@ -52,11 +49,10 @@ type trie struct {
 }
 
 type node struct {
-	isGroup  bool
 	word     string
 	parent   *node
 	children map[string]*node
-	conn     map[string]*nats.Conn
+	handlers pubsub.HandlersChain
 }
 
 func (t *trie) Empty() bool {
@@ -73,7 +69,7 @@ func (t *trie) Clear() {
 	t.sep = 0
 }
 
-func (t *trie) Put(route string, conn *nats.Conn) error {
+func (t *trie) Put(route string, handlers ...pubsub.HandlerFunc) error {
 	query, err := splitWithSeparator(route, t.sep)
 	if err != nil {
 		return err
@@ -88,7 +84,7 @@ func (t *trie) Put(route string, conn *nats.Conn) error {
 				word:     word,
 				parent:   curr,
 				children: make(map[string]*node),
-				conn:     make(map[string]*nats.Conn),
+				handlers: nil,
 			}
 			curr.children[word] = child
 		}
@@ -96,17 +92,28 @@ func (t *trie) Put(route string, conn *nats.Conn) error {
 	}
 
 	// Add Connection
-	curr.conn[route] = conn
+	curr.handlers = append(curr.handlers, handlers...)
 	t.size++
 	t.mu.Unlock()
 	return nil
 }
 
-func (t *trie) Get(route string) (*nats.Conn, error) {
+func (t *trie) Get(route string) (pubsub.HandlersChain, error) {
+	query, err := splitWithSeparator(route, t.sep)
+	if err != nil {
+		return nil, err
+	}
 
+	var res pubsub.HandlersChain
+
+	t.mu.Lock()
+	t.get(query, &res, t.node)
+	t.mu.Unlock()
+
+	return res, nil
 }
 
-func (t *trie) get(query []string, res *nats.Conn, node *node) {
+func (t *trie) get(query []string, res *pubsub.HandlersChain, node *node) {
 	// If we're not yet done, continue
 	if len(query) > 0 {
 		// Go through the exact match node
@@ -159,7 +166,7 @@ func (n *node) orphan() {
 
 	delete(n.parent.children, n.word)
 
-	if len(n.parent.conn) == 0 && len(n.parent.children) == 0 {
+	if len(n.parent.handlers) == 0 && len(n.parent.children) == 0 {
 		n.parent.orphan()
 	}
 }
